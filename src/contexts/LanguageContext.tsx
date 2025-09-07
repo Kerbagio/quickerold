@@ -446,7 +446,7 @@ const translations: Record<Language, Record<string, string>> = {
     'settings.termsOfService': 'شروط الخدمة',
     'settings.version': 'الإصدار ١.٠.٠',
     'settings.tagline': 'توجيه رعاية الطوارئ بسهولة',
-    'settings.copyright': '© ٢٠٢٤ QuickER. تم البناء باستخدام Lovable.',
+    'settings.copyright': '© ٢٠٢٥ QuickER.',
 
     // Onboarding
     'onboarding.slide1.title': 'أسرع مستشفى حسب وقت الوصول',
@@ -741,7 +741,7 @@ const translations: Record<Language, Record<string, string>> = {
     'settings.termsOfService': 'Conditions d\'utilisation',
     'settings.version': 'v1.0.0',
     'settings.tagline': 'Le routage de soins d\'urgence simplifié',
-    'settings.copyright': '© 2024 QuickER. Construit avec Lovable.',
+    'settings.copyright': '© 2025 QuickER.',
 
     // Onboarding
     'onboarding.slide1.title': 'Hôpital le plus rapide par HPA',

@@ -1,0 +1,56 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 180 40" fill="none">
+  <defs>
+    <!-- Gradient for the pin -->
+    <linearGradient id="pinGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#EF4444;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#DC2626;stop-opacity:1" />
+    </linearGradient>
+    <!-- Shadow filter -->
+    <filter id="shadow" x="-50%" y="-50%" width="200%" height="200%">
+      <feDropShadow dx="0" dy="2" stdDeviation="2" flood-color="#00000020"/>
+    </filter>
+  </defs>
+  
+  <!-- Location pin with medical cross -->
+  <g filter="url(#shadow)">
+    <!-- Pin background -->
+    <path d="M20 8C20 12.4183 16.4183 16 12 16C7.58172 16 4 12.4183 4 8C4 3.58172 7.58172 0 12 0C16.4183 0 20 3.58172 20 8Z" fill="url(#pinGradient)"/>
+    <!-- Pin point -->
+    <path d="M12 16L8 24H16L12 16Z" fill="url(#pinGradient)"/>
+    
+    <!-- Medical cross - perfectly centered -->
+    <rect x="10.5" y="4" width="3" height="8" rx="0.5" fill="white"/>
+    <rect x="7" y="6.5" width="10" height="3" rx="0.5" fill="white"/>
+    
+    <!-- Pulse ring animation -->
+    <circle cx="12" cy="8" r="10" fill="none" stroke="#DC2626" stroke-width="1" opacity="0.3">
+      <animate attributeName="r" values="8;12;8" dur="2s" repeatCount="indefinite"/>
+      <animate attributeName="opacity" values="0.6;0;0.6" dur="2s" repeatCount="indefinite"/>
+    </circle>
+  </g>
+  
+  <!-- QuickER text -->
+  <g transform="translate(36, 4)">
+    <!-- Quick part -->
+    <text x="0" y="16" font-family="Poppins, system-ui, sans-serif" font-size="20" font-weight="700" fill="#111827" letter-spacing="-0.02em">
+      Quick
+    </text>
+    
+    <!-- ER part with accent -->
+    <text x="60" y="16" font-family="Poppins, system-ui, sans-serif" font-size="20" font-weight="700" fill="#DC2626" letter-spacing="-0.02em">
+      ER
+    </text>
+    
+    <!-- Tagline -->
+    <text x="0" y="30" font-family="Inter, system-ui, sans-serif" font-size="10" font-weight="400" fill="#6B7280" letter-spacing="0.02em">
+      Get to the right hospital, faster.
+    </text>
+  </g>
+  
+  <!-- Speed lines for motion effect -->
+  <g opacity="0.4">
+    <line x1="24" y1="6" x2="30" y2="6" stroke="#DC2626" stroke-width="1" stroke-linecap="round"/>
+    <line x1="26" y1="10" x2="32" y2="10" stroke="#DC2626" stroke-width="1" stroke-linecap="round"/>
+    <line x1="24" y1="14" x2="28" y2="14" stroke="#DC2626" stroke-width="1" stroke-linecap="round"/>
+  </g>
+</svg>

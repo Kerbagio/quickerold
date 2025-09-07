@@ -1,0 +1,161 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
+All colors MUST be HSL.
+*/
+
+@layer base {
+  :root {
+    /* QuickER Brand Colors - Emergency Care Theme */
+    --background: 0 0% 100%;
+    --foreground: 220 13% 9%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 220 13% 9%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 220 13% 9%;
+
+    /* Primary Emergency Red */
+    --primary: 0 84% 45%;
+    --primary-foreground: 0 0% 100%;
+
+    /* Secondary Dark */
+    --secondary: 220 13% 9%;
+    --secondary-foreground: 0 0% 100%;
+
+    /* Accent Blue for links/info */
+    --accent: 221 83% 53%;
+    --accent-foreground: 0 0% 100%;
+
+    /* Success Green */
+    --success: 160 84% 39%;
+    --success-foreground: 0 0% 100%;
+
+    /* Warning Orange */
+    --warning: 38 92% 50%;
+    --warning-foreground: 220 13% 9%;
+
+    /* Muted Gray */
+    --muted: 220 14% 96%;
+    --muted-foreground: 220 9% 46%;
+
+    /* Destructive (same as primary for emergency context) */
+    --destructive: 0 84% 45%;
+    --destructive-foreground: 0 0% 100%;
+
+    /* Borders */
+    --border: 220 13% 91%;
+    --input: 220 13% 91%;
+    --ring: 0 84% 45%;
+
+    --radius: 1rem;
+
+    /* Sidebar colors */
+    --sidebar-background: 0 0% 98%;
+    --sidebar-foreground: 220 13% 26%;
+    --sidebar-primary: 220 13% 9%;
+    --sidebar-primary-foreground: 0 0% 98%;
+    --sidebar-accent: 220 13% 95%;
+    --sidebar-accent-foreground: 220 13% 9%;
+    --sidebar-border: 220 13% 91%;
+    --sidebar-ring: 0 84% 45%;
+
+    /* Emergency-specific design tokens */
+    --emergency-glow: 0 84% 45%;
+    --safety-gradient: linear-gradient(135deg, hsl(var(--primary)), hsl(160 84% 39%));
+    --hero-gradient: linear-gradient(135deg, hsl(var(--background)), hsl(220 13% 96%));
+    --shadow-emergency: 0 10px 30px -10px hsl(var(--primary) / 0.2);
+    --shadow-soft: 0 4px 20px -4px hsl(220 13% 9% / 0.1);
+  }
+
+  .dark {
+    --background: 220 13% 9%;
+    --foreground: 0 0% 98%;
+
+    --card: 220 13% 9%;
+    --card-foreground: 0 0% 98%;
+
+    --popover: 220 13% 9%;
+    --popover-foreground: 0 0% 98%;
+
+    --primary: 0 84% 50%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 220 13% 17%;
+    --secondary-foreground: 0 0% 98%;
+
+    --accent: 221 83% 60%;
+    --accent-foreground: 0 0% 98%;
+
+    --muted: 220 13% 17%;
+    --muted-foreground: 220 9% 65%;
+
+    --destructive: 0 84% 50%;
+    --destructive-foreground: 0 0% 98%;
+
+    --border: 220 13% 17%;
+    --input: 220 13% 17%;
+    --ring: 0 84% 50%;
+
+    --sidebar-background: 220 13% 9%;
+    --sidebar-foreground: 220 14% 96%;  
+    --sidebar-primary: 0 84% 50%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 220 13% 15%;
+    --sidebar-accent-foreground: 220 14% 96%;
+    --sidebar-border: 220 13% 15%;
+    --sidebar-ring: 0 84% 50%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground font-inter;
+    font-size: 16px;
+    line-height: 1.6;
+  }
+  
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-poppins font-semibold;
+  }
+  
+  h1 {
+    @apply text-3xl lg:text-4xl;
+  }
+  
+  h2 {
+    @apply text-2xl lg:text-3xl;
+  }
+  
+  /* RTL Support */
+  .rtl {
+    direction: rtl;
+  }
+  
+  .rtl .flex-row-reverse {
+    flex-direction: row-reverse;
+  }
+  
+  .rtl .text-left {
+    text-align: right;
+  }
+  
+  .rtl .text-right {
+    text-align: left;
+  }
+}
+
+/* Hide Leaflet Routing Machine overlays and instructions */
+.leaflet-routing-container,
+.leaflet-routing-instructions,
+.leaflet-routing-summary,
+.leaflet-routing-itinerary {
+  display: none !important;
+}

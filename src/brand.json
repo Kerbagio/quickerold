@@ -1,0 +1,30 @@
+{
+  "name": "QuickER",
+  "tagline": "Get to the right hospital, faster.",
+  "description": "Find the nearest emergency care facility with real-time routing. Because in emergencies, minutes matter.",
+  "logo": "/logo-quicker.svg",
+  "favicon": "/favicon.svg",
+  "colors": {
+    "primary": "#DC2626",
+    "secondary": "#111827",
+    "accent": "#2563EB",
+    "success": "#059669",
+    "warning": "#F59E0B",
+    "background": "#FFFFFF",
+    "muted": "#6B7280",
+    "border": "#E5E7EB"
+  },
+  "fonts": {
+    "heading": "Poppins",
+    "body": "Inter"
+  },
+  "voice": {
+    "tone": "Clear, concise, calm",
+    "principles": [
+      "No medical advice - we provide routing help, not diagnosis",
+      "Always show ETA, distance, and safety hints",
+      "Inclusive and accessible language",
+      "Professional yet empathetic"
+    ]
+  }
+}

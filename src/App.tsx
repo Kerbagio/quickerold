@@ -8,6 +8,7 @@ import OfflineNotice from "./components/OfflineNotice";
 import Index from "./pages/Index";
 import Options from "./pages/Options";
 import Dashboard from "./pages/Dashboard";
+import HealthAssistant from "./pages/HealthAssistant";
 import Onboarding from "./pages/Onboarding";
 import Settings from "./pages/Settings";
 import About from "./pages/About";
@@ -34,6 +35,7 @@ const App = () => (
             <Route path="/" element={<Index />} />
             <Route path="/options" element={<Options />} />
             <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/health-assistant" element={<HealthAssistant />} />
             <Route path="/onboarding" element={<Onboarding />} />
             <Route path="/settings" element={<Settings />} />
             <Route path="/about" element={<About />} />

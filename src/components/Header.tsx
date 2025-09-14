@@ -21,6 +21,9 @@ const Header = () => {
             <Link to="/dashboard" className="text-foreground hover:text-primary transition-colors">
               {t('nav.dashboard')}
             </Link>
+            <Link to="/health-assistant" className="text-foreground hover:text-primary transition-colors">
+              Health Assistant
+            </Link>
             <Link to="/about" className="text-foreground hover:text-primary transition-colors">
               {t('nav.about')}
             </Link>

@@ -3,10 +3,9 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Bot, User, Send, AlertTriangle, Heart, Stethoscope, Pill, Phone, Loader2 } from "lucide-react";
+import { Bot, User, Send, AlertTriangle, Heart, Stethoscope, Pill, Phone } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useToast } from "@/hooks/use-toast";
-import { pipeline } from "@huggingface/transformers";
 
 interface Message {
   id: string;
@@ -14,15 +13,12 @@ interface Message {
   sender: 'user' | 'bot';
   timestamp: Date;
   type?: 'emergency' | 'general' | 'symptom' | 'medication';
-  isStreaming?: boolean;
 }
 
 const HealthChatbot = () => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputText, setInputText] = useState('');
   const [isTyping, setIsTyping] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  const [generator, setGenerator] = useState<any>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { t, language } = useLanguage();
   const { toast } = useToast();
@@ -35,273 +31,7 @@ const HealthChatbot = () => {
     scrollToBottom();
   }, [messages]);
 
-  // Initialize AI model
-  useEffect(() => {
-    const initializeAI = async () => {
-      try {
-        setIsLoading(true);
-        const textGenerator = await pipeline('text-generation', 'Xenova/distilgpt2', {
-          device: 'webgpu', // Use WebGPU for better performance, fallback to CPU
-        });
-        setGenerator(textGenerator);
-        
-        // Add welcome message
-        const welcomeMessage: Message = {
-          id: Date.now().toString(),
-          text: `👋 Hello! I'm your AI Health Assistant powered by advanced language models. I can help you with health questions, symptoms analysis, medication information, and wellness guidance. How can I assist you today?`,
-          sender: 'bot',
-          timestamp: new Date(),
-          type: 'general'
-        };
-        setMessages([welcomeMessage]);
-      } catch (error) {
-        console.error('Failed to initialize AI model:', error);
-        // Fallback welcome message
-        const welcomeMessage: Message = {
-          id: Date.now().toString(),
-          text: `👋 Hello! I'm your AI Health Assistant. I can help you with health questions, symptoms analysis, medication information, and wellness guidance. How can I assist you today?`,
-          sender: 'bot',
-          timestamp: new Date(),
-          type: 'general'
-        };
-        setMessages([welcomeMessage]);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    initializeAI();
-  }, []);
-
-  // Add the AI response generation and intelligent fallback functions after the existing useEffect
-  // Generate AI response using local model or intelligent fallback
-  const generateAIResponse = async (userMessage: string): Promise<string> => {
-    try {
-      // Check for emergency keywords first
-      const emergencyKeywords = ['emergency', 'urgent', 'severe', 'critical', 'life threatening', 'dying', 'help me', '911', 'can\'t breathe', 'chest pain', 'heart attack'];
-      const isEmergency = emergencyKeywords.some(keyword => userMessage.toLowerCase().includes(keyword));
-      
-      if (isEmergency) {
-        return `🚨 **MEDICAL EMERGENCY DETECTED** 🚨
-
-I understand you're experiencing a serious medical situation. Here's what you need to do **immediately**:
-
-**IMMEDIATE ACTIONS:**
-1. **Call emergency services NOW** (911, 112, or your local emergency number)
-2. **Stay calm** and follow operator instructions
-3. **Don't hang up** until help arrives
-4. **Use QuickER** to find the nearest emergency room
-
-**WHILE WAITING FOR HELP:**
-- Stay in a safe position
-- Keep airways clear
-- Don't move if you suspect injury
-- Have someone stay with you
-
-**I cannot provide emergency medical advice.** This requires immediate professional medical attention. Please call emergency services right now.
-
-*QuickER can help you find the nearest hospital once you're stable.*`;
-      }
-
-      // Create a health-focused prompt
-      const healthPrompt = `You are a knowledgeable and caring AI health assistant. A user asks: "${userMessage}"
-
-Provide a helpful, accurate, and empathetic response that:
-- Addresses their health concern professionally
-- Offers practical guidance and information
-- Suggests when to seek medical attention
-- Maintains a caring and supportive tone
-- Includes relevant health tips when appropriate
-- Always disclaims that this is not a substitute for professional medical advice
-
-Response:`;
-
-      if (generator) {
-        try {
-          const result = await generator(healthPrompt, {
-            max_new_tokens: 200,
-            temperature: 0.7,
-            top_p: 0.9,
-            repetition_penalty: 1.1,
-          });
-          
-          // Extract the generated text
-          let response = result[0].generated_text.replace(healthPrompt, '').trim();
-          
-          // Clean up and enhance the response
-          if (response.length < 50) {
-            throw new Error('Response too short');
-          }
-          
-          return response;
-        } catch (error) {
-          console.error('AI generation error:', error);
-          // Fall through to intelligent fallback
-        }
-      }
-
-      // Intelligent fallback responses based on keywords
-      return getIntelligentFallbackResponse(userMessage);
-      
-    } catch (error) {
-      console.error('Error generating AI response:', error);
-      return getIntelligentFallbackResponse(userMessage);
-    }
-  };
-
-  // Intelligent fallback with contextual responses
-  const getIntelligentFallbackResponse = (userMessage: string): string => {
-    const message = userMessage.toLowerCase();
-    
-    // Symptom-based responses
-    if (message.includes('fever') || message.includes('temperature')) {
-      return `🌡️ **Fever Management**
-
-I understand you're dealing with a fever. Here's what I recommend:
-
-**Immediate Care:**
-- Rest and stay hydrated with water and clear fluids
-- Take acetaminophen or ibuprofen as directed on the package
-- Use cool compresses on your forehead
-- Dress lightly and keep your environment cool
-
-**Monitor your symptoms:**
-- Normal: 98.6°F (37°C)
-- Fever: 100.4°F (38°C) or higher
-- Seek medical attention if fever exceeds 103°F (39.4°C)
-
-**When to see a doctor:**
-- Fever persists for more than 3 days
-- Accompanied by severe headache, stiff neck, or rash
-- Difficulty breathing or persistent cough
-- Signs of dehydration
-
-Would you like specific advice based on your current temperature?`;
-    }
-    
-    if (message.includes('headache') || message.includes('head pain')) {
-      return `🤕 **Headache Relief**
-
-I'm sorry you're experiencing a headache. Let me help you find relief:
-
-**Immediate Relief:**
-- Rest in a quiet, dark room
-- Apply a cold compress to your forehead or neck
-- Stay hydrated - drink plenty of water
-- Gently massage your temples and neck
-- Take over-the-counter pain relievers (acetaminophen, ibuprofen)
-
-**Common Causes:**
-- Tension and stress
-- Dehydration
-- Lack of sleep
-- Eye strain from screens
-- Skipping meals
-
-**Prevention Tips:**
-- Maintain regular sleep schedule (7-9 hours)
-- Stay hydrated throughout the day
-- Take breaks from screens
-- Manage stress with relaxation techniques
-
-**Seek medical attention if:**
-- Sudden, severe headache (worst of your life)
-- Headache with fever and stiff neck
-- Headache after head injury
-- Changes in vision or speech
-
-What type of headache are you experiencing?`;
-    }
-    
-    if (message.includes('stomach') || message.includes('nausea') || message.includes('vomiting')) {
-      return `🤢 **Stomach Issues Support**
-
-I understand you're feeling unwell. Here's how to care for stomach problems:
-
-**Immediate Care:**
-- Sip small amounts of clear fluids (water, clear broth, flat ginger ale)
-- Try the BRAT diet: Bananas, Rice, Applesauce, Toast
-- Rest and avoid solid foods if vomiting
-- Use over-the-counter medications sparingly
-
-**Stay Hydrated:**
-- Take small, frequent sips
-- Try ice chips if you can't keep liquids down
-- Oral rehydration solutions can help
-- Avoid dairy, caffeine, and alcohol
-
-**When to Seek Help:**
-- Persistent vomiting for more than 24 hours
-- Signs of dehydration (dry mouth, dizziness, no urination)
-- Severe abdominal pain
-- Blood in vomit or stool
-- High fever with stomach symptoms
-
-Most stomach bugs resolve within 2-3 days with proper care. How long have you been experiencing these symptoms?`;
-    }
-    
-    if (message.includes('cough') || message.includes('cold') || message.includes('flu')) {
-      return `🤧 **Cold & Flu Care**
-
-I'm here to help you feel better. Here's comprehensive care for respiratory symptoms:
-
-**Symptom Relief:**
-- Rest is crucial - your body needs energy to fight infection
-- Stay hydrated with water, warm tea, or clear broths
-- Use a humidifier or breathe steam from a hot shower
-- Honey can soothe throat irritation (not for children under 1 year)
-- Saline nasal rinses can clear congestion
-
-**Over-the-Counter Options:**
-- Pain relievers for aches and fever
-- Cough suppressants for dry coughs
-- Expectorants to loosen mucus
-- Decongestants for stuffy nose
-
-**Home Remedies:**
-- Warm salt water gargles for sore throat
-- Chicken soup provides hydration and comfort
-- Elevate your head while sleeping
-- Get plenty of vitamin C and zinc
-
-**See a Doctor If:**
-- Symptoms worsen after a week
-- High fever (over 101.3°F)
-- Difficulty breathing or chest pain
-- Persistent cough with blood
-- Severe headache or sinus pain
-
-Are you experiencing any specific cold or flu symptoms I can help address?`;
-    }
-    
-    // Default intelligent response
-    return `🤖 **AI Health Assistant**
-
-Thank you for reaching out! I'm here to provide helpful health guidance and support.
-
-**I can help you with:**
-- Symptom assessment and care recommendations
-- General health questions and wellness tips
-- Medication information and safety
-- When to seek medical attention
-- First aid and emergency guidance
-- Chronic condition management support
-
-**Please remember:**
-- This is educational information, not medical diagnosis
-- Always consult healthcare professionals for serious concerns
-- Call emergency services (911) for medical emergencies
-- Trust your instincts about your health
-
-**About your question:** "${userMessage}"
-
-To give you the most helpful response, could you provide more details about:
-- What specific symptoms you're experiencing
-- How long you've had these symptoms
-- Any other relevant health information
-
-I'm here to support you with evidence-based health information. What would you like to know more about?`;
-  };
+  // Advanced AI Health Knowledge Base
   const healthKnowledge = {
     // Emergency conditions with detailed responses
     emergency: {
@@ -846,18 +576,20 @@ What would you like to discuss? I'm here to provide comprehensive health guidanc
     };
 
     setMessages(prev => [...prev, userMessage]);
-    const currentInput = inputText;
     setInputText('');
     setIsTyping(true);
 
-    try {
-      // Generate AI response
-      const aiResponse = await generateAIResponse(currentInput);
-      const messageType = getMessageType(currentInput);
+    // Simulate bot thinking time with variable delay based on complexity
+    const thinkingTime = 800 + Math.random() * 1200; // 0.8-2 seconds
+    
+    setTimeout(() => {
+      const botResponse = getBotResponse(inputText);
+      const messageType = getMessageType(inputText);
+      const followUp = getFollowUpQuestion(inputText);
       
       const botMessage: Message = {
         id: (Date.now() + 1).toString(),
-        text: aiResponse,
+        text: botResponse,
         sender: 'bot',
         timestamp: new Date(),
         type: messageType
@@ -865,19 +597,22 @@ What would you like to discuss? I'm here to provide comprehensive health guidanc
 
       setMessages(prev => [...prev, botMessage]);
       
-    } catch (error) {
-      console.error('Error generating response:', error);
-      const errorMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        text: "I apologize, but I'm having trouble processing your request right now. Please try again or rephrase your question. For medical emergencies, please call 911 immediately.",
-        sender: 'bot',
-        timestamp: new Date(),
-        type: 'general'
-      };
-      setMessages(prev => [...prev, errorMessage]);
-    } finally {
+      // Add follow-up question if available
+      if (followUp) {
+        setTimeout(() => {
+          const followUpMessage: Message = {
+            id: (Date.now() + 2).toString(),
+            text: followUp,
+            sender: 'bot',
+            timestamp: new Date(),
+            type: 'general'
+          };
+          setMessages(prev => [...prev, followUpMessage]);
+        }, 500);
+      }
+      
       setIsTyping(false);
-    }
+    }, thinkingTime);
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
@@ -1075,37 +810,27 @@ What would you like to discuss? I'm here to provide comprehensive health guidanc
 
       {/* Input */}
       <div className="p-4 border-t border-border">
-        {isLoading && (
-          <div className="flex items-center justify-center p-4 mb-4">
-            <Loader2 className="w-6 h-6 animate-spin mr-2" />
-            <span>Loading AI model...</span>
-          </div>
-        )}
         <div className="flex gap-2">
           <Input
             value={inputText}
             onChange={(e) => setInputText(e.target.value)}
             onKeyPress={handleKeyPress}
-            placeholder="Ask about your health concerns... (powered by AI)"
+            placeholder="Ask about your health concerns..."
             className="flex-1"
-            disabled={isTyping || isLoading}
+            disabled={isTyping}
           />
           <Button
             onClick={handleSendMessage}
-            disabled={!inputText.trim() || isTyping || isLoading}
+            disabled={!inputText.trim() || isTyping}
             size="icon"
           >
-            {isTyping ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
-            ) : (
-              <Send className="w-4 h-4" />
-            )}
+            <Send className="w-4 h-4" />
           </Button>
         </div>
         
         <div className="mt-2 text-xs text-muted-foreground text-center">
           <AlertTriangle className="w-3 h-3 inline mr-1" />
-          For medical emergencies, call emergency services immediately. This AI assistant provides educational information only.
+          For medical emergencies, call emergency services immediately
         </div>
       </div>
     </div>

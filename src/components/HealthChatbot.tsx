@@ -3,7 +3,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Bot, User, Send, AlertTriangle, Heart, Stethoscope, Pill, Phone } from "lucide-react";
+import { Bot, User, Send, AlertTriangle, Heart, Stethoscope, Pill, Phone, Search, Lightbulb, BookOpen, Zap } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useToast } from "@/hooks/use-toast";
 
@@ -12,7 +12,7 @@ interface Message {
   text: string;
   sender: 'user' | 'bot';
   timestamp: Date;
-  type?: 'emergency' | 'general' | 'symptom' | 'medication';
+  type?: 'emergency' | 'general' | 'symptom' | 'medication' | 'education' | 'science' | 'technology' | 'lifestyle';
 }
 
 const HealthChatbot = () => {
@@ -31,520 +31,431 @@ const HealthChatbot = () => {
     scrollToBottom();
   }, [messages]);
 
-  // Advanced AI Health Knowledge Base
-  const healthKnowledge = {
-    // Emergency conditions with detailed responses
+  // Comprehensive AI Knowledge Base - ChatGPT-like responses
+  const aiKnowledge = {
+    // Emergency conditions
     emergency: {
       keywords: ['emergency', 'urgent', 'severe', 'critical', 'life threatening', 'dying', 'help me', '911'],
       response: (context: string) => {
-        return `🚨 **MEDICAL EMERGENCY DETECTED** 🚨
+        return `I understand you're experiencing a serious medical situation. This requires immediate professional medical attention.
 
-I understand you're experiencing a serious medical situation. Here's what you need to do **immediately**:
+**Call emergency services right now:**
+- **911** (US/Canada)
+- **112** (Europe)
+- **999** (UK)
 
-**IMMEDIATE ACTIONS:**
-1. **Call emergency services NOW** (911, 112, or your local emergency number)
-2. **Stay calm** and follow operator instructions
-3. **Don't hang up** until help arrives
-4. **Use QuickER** to find the nearest emergency room
-
-**WHILE WAITING FOR HELP:**
-- Stay in a safe position
+**While waiting for help:**
+- Stay calm and follow operator instructions
 - Keep airways clear
 - Don't move if you suspect injury
 - Have someone stay with you
 
-**I cannot provide emergency medical advice.** This requires immediate professional medical attention. Please call emergency services right now.
-
-*QuickER can help you find the nearest hospital once you're stable.*`
+I cannot provide emergency medical advice - this needs immediate professional attention. Please call emergency services now.`
       },
       type: 'emergency' as const,
-      followUp: "Are you able to call emergency services? Do you need help finding the nearest hospital?"
+      followUp: "Are you able to call emergency services? I can help you find the nearest hospital once you're stable."
     },
 
-    // Cardiovascular issues
-    chestPain: {
-      keywords: ['chest pain', 'heart pain', 'chest tightness', 'heart attack', 'angina', 'chest pressure', 'heartburn', 'chest discomfort'],
+    // Sexual health and education
+    sex: {
+      keywords: ['sex', 'sexual', 'intercourse', 'intimacy', 'reproduction', 'sexuality', 'sexual health'],
       response: (context: string) => {
-        const isSevere = context.includes('severe') || context.includes('crushing') || context.includes('intense');
-        const hasOtherSymptoms = context.includes('breath') || context.includes('nausea') || context.includes('sweat');
-        
-        if (isSevere || hasOtherSymptoms) {
-          return `🫀 **CHEST PAIN - POTENTIAL HEART EMERGENCY** 🚨
+        return `I'm happy to discuss sexual health and education in a mature, informative way.
 
-**This could be a heart attack. Take immediate action:**
+**Sexual Health Basics:**
+Sex is a natural part of human life involving physical intimacy between consenting adults. It's important to approach it with knowledge, respect, and safety.
 
-**CALL 911 IMMEDIATELY** - Don't wait, don't drive yourself
+**Key Aspects:**
+- **Consent** - Always enthusiastic, ongoing, and clear consent from all parties
+- **Safety** - Use protection to prevent STIs and unwanted pregnancy
+- **Communication** - Open, honest discussion about boundaries and preferences
+- **Health** - Regular check-ups and honest discussions with healthcare providers
 
-**SYMPTOMS OF HEART ATTACK:**
-- Chest pain or pressure (crushing, squeezing, burning)
-- Pain spreading to arm, shoulder, neck, jaw, or back
-- Shortness of breath
-- Nausea or vomiting
-- Cold sweat
-- Lightheadedness or fainting
+**Safe Sex Practices:**
+- Use condoms consistently and correctly
+- Get tested regularly for STIs
+- Discuss sexual history with partners
+- Consider birth control options if pregnancy prevention is desired
 
-**WHILE WAITING FOR HELP:**
-- Sit down and rest
-- Take aspirin if available (unless allergic)
-- Loosen tight clothing
-- Stay calm and breathe slowly
+**When to Seek Help:**
+- Concerns about sexual function or satisfaction
+- Questions about contraception or family planning
+- STI symptoms or exposure
+- Sexual health concerns
 
-**Use QuickER to find the nearest cardiac center** for immediate treatment.
-
-*Time is critical - every minute counts in a heart attack.*`;
-        } else {
-          return `🫀 **Chest Pain Assessment**
-
-Chest pain can have many causes. Let me help you understand:
-
-**POSSIBLE CAUSES:**
-- Heart-related (angina, heart attack)
-- Digestive (acid reflux, GERD)
-- Musculoskeletal (muscle strain, costochondritis)
-- Respiratory (pneumonia, pleurisy)
-- Anxiety or stress
-
-**QUESTIONS TO CONSIDER:**
-- How would you describe the pain? (sharp, dull, burning, pressure)
-- When did it start?
-- Does it worsen with breathing or movement?
-- Any other symptoms?
-
-**SEEK IMMEDIATE HELP IF:**
-- Pain is severe or crushing
-- Pain spreads to arm, neck, or jaw
-- You have shortness of breath
-- You feel nauseous or sweaty
-
-**For non-emergency chest pain:**
-- Rest and monitor symptoms
-- Consider over-the-counter antacids if it feels like heartburn
-- See a doctor if it persists or worsens
-
-Would you like me to help you assess your specific symptoms?`;
-        }
+Would you like me to elaborate on any specific aspect of sexual health?`
       },
-      type: 'emergency' as const,
-      followUp: "Can you describe the chest pain in more detail? Is it sharp, dull, or crushing? Any other symptoms?"
+      type: 'education' as const,
+      followUp: "Is there a specific aspect of sexual health you'd like to know more about?"
     },
 
-    // Respiratory issues
-    breathing: {
-      keywords: ['can\'t breathe', 'shortness of breath', 'breathing difficulty', 'wheezing', 'asthma attack', 'choking', 'suffocating', 'breathless'],
+    // Contraception and protection
+    condom: {
+      keywords: ['condom', 'contraception', 'birth control', 'protection', 'safe sex', 'prevent pregnancy', 'sti prevention'],
       response: (context: string) => {
-        const isSevere = context.includes('can\'t breathe') || context.includes('choking') || context.includes('suffocating');
-        
-        if (isSevere) {
-          return `🫁 **BREATHING EMERGENCY** 🚨
+        return `Condoms are an essential tool for safe sex and preventing both STIs and unwanted pregnancy.
 
-**This is a medical emergency. Call 911 immediately.**
+**What are condoms?**
+Condoms are thin sheaths (usually made of latex, polyurethane, or lambskin) that cover the penis during sex to prevent sperm from reaching the egg and to reduce STI transmission.
 
-**IMMEDIATE ACTIONS:**
-1. **Call emergency services NOW**
-2. **Sit upright** - don't lie down
-3. **Stay calm** - panic makes breathing worse
-4. **Use QuickER** to find nearest emergency room
+**Types of condoms:**
+- **Male condoms** - Worn on the penis
+- **Female condoms** - Inserted into the vagina
+- **Latex** - Most common, effective against STIs
+- **Polyurethane** - For latex allergies
+- **Lambskin** - Natural but less effective against STIs
 
-**POSSIBLE CAUSES:**
-- Asthma attack
-- Allergic reaction (anaphylaxis)
-- Heart attack
-- Pulmonary embolism
-- Pneumonia
-- Panic attack
+**How to use condoms correctly:**
+1. Check expiration date and package integrity
+2. Open carefully (don't use teeth)
+3. Pinch the tip to leave space for semen
+4. Roll down completely over erect penis
+5. Use water-based lubricant if needed
+6. Hold base when withdrawing
+7. Dispose of properly after use
 
-**IF YOU HAVE AN INHALER:**
-- Use it as prescribed
-- Take 2-4 puffs
-- Wait 4 minutes, repeat if needed
+**Effectiveness:**
+- **Perfect use**: 98% effective against pregnancy
+- **Typical use**: 85% effective against pregnancy
+- **STI protection**: Significantly reduces risk of most STIs
 
-**SIGNS OF SEVERE BREATHING PROBLEMS:**
-- Can't speak in full sentences
-- Blue lips or fingernails
-- Chest retractions
-- Confusion or drowsiness
+**When to use:**
+- Every time you have vaginal, anal, or oral sex
+- From start to finish of sexual activity
+- Even if using other birth control methods
 
-*Don't delay - breathing problems can become life-threatening quickly.*`;
-        } else {
-          return `🫁 **Breathing Difficulty Assessment**
+**Common mistakes:**
+- Not checking expiration date
+- Using oil-based lubricants with latex
+- Not leaving space at the tip
+- Putting on too late or removing too early
 
-Let me help you understand your breathing issues:
-
-**COMMON CAUSES:**
-- **Asthma** - wheezing, tight chest, triggered by allergens
-- **Anxiety/Panic** - rapid breathing, chest tightness
-- **Allergies** - seasonal or environmental triggers
-- **Respiratory infections** - cold, flu, COVID-19
-- **Heart conditions** - especially with chest pain
-- **Anemia** - fatigue with shortness of breath
-
-**ASSESSMENT QUESTIONS:**
-- When did this start?
-- What were you doing when it began?
-- Any known allergies or asthma?
-- Recent illness or exposure?
-- Any chest pain or pressure?
-
-**HOME CARE (if mild):**
-- Sit upright and rest
-- Practice slow, deep breathing
-- Use inhaler if prescribed
-- Avoid triggers (smoke, allergens)
-- Stay hydrated
-
-**SEEK MEDICAL HELP IF:**
-- Symptoms worsen or persist
-- You have chest pain
-- Lips or nails turn blue
-- You feel confused or dizzy
-
-Can you tell me more about when this breathing difficulty started?`;
-        }
+Do you have specific questions about condom use or other contraception methods?`
       },
-      type: 'emergency' as const,
-      followUp: "Are you able to speak in full sentences? Any chest pain or other symptoms?"
+      type: 'education' as const,
+      followUp: "Would you like to know about other types of contraception or safe sex practices?"
     },
 
-    // Fever and infections
-    fever: {
-      keywords: ['fever', 'high temperature', 'hot', 'burning up', 'temperature', 'chills', 'sweating'],
-      response: (context: string) => {
-        const hasHighFever = context.includes('high') || context.includes('very hot') || context.includes('burning');
-        const hasOtherSymptoms = context.includes('rash') || context.includes('stiff') || context.includes('confusion');
-        
-        return `🌡️ **Fever Management & Assessment**
-
-**CURRENT GUIDELINES:**
-- **Normal:** 98.6°F (37°C)
-- **Low-grade fever:** 99-100.4°F (37.2-38°C)
-- **Fever:** 100.4-103°F (38-39.4°C)
-- **High fever:** Over 103°F (39.4°C)
-
-**IMMEDIATE CARE:**
-1. **Rest** - your body needs energy to fight infection
-2. **Stay hydrated** - drink water, clear fluids, or electrolyte solutions
-3. **Dress lightly** - don't over-bundle
-4. **Cool compresses** - on forehead, neck, and armpits
-5. **Fever reducers** - acetaminophen or ibuprofen (follow dosing instructions)
-
-**WHEN TO SEEK MEDICAL HELP:**
-- Fever over 103°F (39.4°C)
-- Fever lasting more than 3 days
-- Fever with rash, stiff neck, or confusion
-- Difficulty breathing or chest pain
-- Severe headache or neck stiffness
-- Signs of dehydration (dry mouth, no urination)
-
-**RED FLAGS - SEEK IMMEDIATE HELP:**
-- Fever with rash that doesn't fade when pressed
-- Stiff neck with fever
-- Confusion or difficulty waking up
-- Severe headache with fever
-- Difficulty breathing
-
-**HOME MONITORING:**
-- Check temperature every 4-6 hours
-- Monitor for new symptoms
-- Ensure adequate fluid intake
-- Get plenty of rest
-
-What's your current temperature, and are you experiencing any other symptoms?`;
-      },
-      type: 'general' as const,
-      followUp: "What's your temperature reading? Any other symptoms like rash, headache, or body aches?"
-    },
-
-    // Headaches and neurological
+    // Headaches and pain
     headache: {
-      keywords: ['headache', 'head pain', 'migraine', 'head ache', 'head pounding', 'tension headache'],
+      keywords: ['headache', 'head pain', 'migraine', 'head ache', 'head pounding', 'tension headache', 'head hurts'],
       response: (context: string) => {
-        const isSevere = context.includes('severe') || context.includes('worst') || context.includes('unbearable');
-        const hasOtherSymptoms = context.includes('fever') || context.includes('stiff') || context.includes('vision');
-        
-        if (isSevere || hasOtherSymptoms) {
-          return `🤕 **SEVERE HEADACHE - MEDICAL ATTENTION NEEDED**
+        return `Headaches are one of the most common health complaints. Let me help you understand the different types and what you can do about them.
 
-**This could be serious. Seek medical help if:**
+**Types of Headaches:**
+
+**1. Tension Headaches (Most Common)**
+- Dull, pressure-like pain on both sides
+- Often described as a "tight band" around the head
+- Usually mild to moderate intensity
+- Can last 30 minutes to several days
+
+**2. Migraine Headaches**
+- Throbbing pain, often on one side
+- Can include nausea, vomiting, sensitivity to light/sound
+- May have visual disturbances (aura) before pain starts
+- Can last 4-72 hours
+
+**3. Cluster Headaches**
+- Severe, burning pain around one eye
+- Often occur in "clusters" over weeks/months
+- More common in men
+- Can cause eye watering and nasal congestion
+
+**4. Sinus Headaches**
+- Pressure and pain around eyes, cheeks, forehead
+- Often worse when bending forward
+- Usually accompanied by nasal congestion
+
+**Immediate Relief:**
+- Rest in a quiet, dark room
+- Apply cold compress to forehead or neck
+- Stay hydrated (dehydration causes headaches)
+- Gentle massage of temples and neck
+- Over-the-counter pain relievers (acetaminophen, ibuprofen, aspirin)
+
+**Lifestyle Factors:**
+- **Sleep**: 7-9 hours consistently
+- **Hydration**: 8 glasses of water daily
+- **Stress management**: Deep breathing, meditation, exercise
+- **Regular meals**: Don't skip meals
+- **Caffeine**: Limit intake (withdrawal can cause headaches)
+
+**When to Seek Medical Help:**
 - Sudden, severe headache (worst of your life)
-- Headache with fever and stiff neck
+- Headache with fever, stiff neck, or rash
 - Headache after head injury
 - Headache with vision changes, confusion, or weakness
-- Headache with nausea and vomiting
-
-**POSSIBLE SERIOUS CAUSES:**
-- Meningitis (fever + stiff neck)
-- Stroke (sudden onset + neurological symptoms)
-- Brain aneurysm (sudden severe pain)
-- Concussion (after head injury)
-- High blood pressure crisis
-
-**IMMEDIATE ACTIONS:**
-- Call emergency services if severe
-- Use QuickER to find nearest hospital
-- Don't drive yourself
-- Stay with someone if possible
-
-**For severe headaches, don't wait - seek medical attention immediately.**`;
-        } else {
-          return `🤕 **Headache Relief & Management**
-
-**TYPES OF HEADACHES:**
-- **Tension:** Dull, pressure-like pain, both sides
-- **Migraine:** Throbbing, often one side, with nausea/sensitivity
-- **Cluster:** Severe, one-sided, around eye
-- **Sinus:** Pressure around eyes/cheeks, worse when bending
-
-**IMMEDIATE RELIEF:**
-1. **Rest** in a quiet, dark room
-2. **Cold compress** on forehead or neck
-3. **Stay hydrated** - dehydration causes headaches
-4. **Gentle massage** of temples and neck
-5. **Over-the-counter pain relievers** (acetaminophen, ibuprofen, aspirin)
-
-**LIFESTYLE FACTORS:**
-- **Sleep:** 7-9 hours consistently
-- **Hydration:** 8 glasses of water daily
-- **Stress management:** Deep breathing, meditation
-- **Regular meals:** Don't skip meals
-- **Limit caffeine:** Too much or withdrawal causes headaches
-
-**TRIGGERS TO AVOID:**
-- Bright lights and loud noises
-- Strong smells
-- Certain foods (chocolate, cheese, processed meats)
-- Weather changes
-- Poor posture
-
-**SEEK MEDICAL HELP IF:**
-- Headaches are frequent or severe
-- Over-the-counter meds don't help
-- Headaches interfere with daily life
+- Frequent headaches that interfere with daily life
 - New headache pattern after age 50
 
-What type of headache are you experiencing, and what seems to trigger it?`;
-        }
+**Prevention:**
+- Identify and avoid triggers
+- Maintain regular sleep schedule
+- Manage stress effectively
+- Stay hydrated
+- Regular exercise
+- Limit alcohol and processed foods
+
+What type of headache are you experiencing? I can provide more specific guidance based on your symptoms.`
       },
       type: 'general' as const,
-      followUp: "Can you describe the headache - is it throbbing, pressure, or sharp? Any triggers you've noticed?"
-    },
-
-    // Digestive issues
-    stomach: {
-      keywords: ['stomach pain', 'stomach ache', 'nausea', 'vomiting', 'diarrhea', 'stomach bug', 'food poisoning', 'indigestion', 'bloating'],
-      response: (context: string) => {
-        const hasSevereSymptoms = context.includes('severe') || context.includes('blood') || context.includes('dehydration');
-        
-        if (hasSevereSymptoms) {
-          return `🤢 **SEVERE STOMACH ISSUES - MEDICAL ATTENTION NEEDED**
-
-**Seek immediate medical help if:**
-- Severe abdominal pain
-- Blood in vomit or stool
-- Signs of dehydration (dry mouth, no urination, dizziness)
-- High fever with stomach symptoms
-- Severe pain that doesn't improve
-
-**SIGNS OF DEHYDRATION:**
-- Dry mouth and throat
-- Dark urine or no urination
-- Dizziness or lightheadedness
-- Rapid heartbeat
-- Sunken eyes
-
-**IMMEDIATE CARE:**
-- Sip small amounts of clear fluids
-- Use QuickER to find nearest urgent care
-- Don't eat solid foods if vomiting
-- Rest and stay warm
-
-**For severe symptoms, don't wait - seek medical attention.**`;
-        } else {
-          return `🤢 **Stomach Issues - Home Care Guide**
-
-**COMMON CAUSES:**
-- **Viral gastroenteritis** (stomach flu)
-- **Food poisoning** (bacteria, toxins)
-- **Indigestion** (overeating, spicy foods)
-- **Stress or anxiety**
-- **Medication side effects**
-- **Food intolerances**
-
-**HOME TREATMENT:**
-1. **Stay hydrated** - small sips of water, clear fluids, or electrolyte solutions
-2. **BRAT diet** - Bananas, Rice, Applesauce, Toast (bland foods)
-3. **Avoid** - dairy, spicy, fatty, or fried foods
-4. **Rest** - your digestive system needs time to recover
-5. **Over-the-counter** - anti-nausea or anti-diarrheal medications as directed
-
-**HYDRATION TIPS:**
-- Sip small amounts frequently
-- Try ice chips if you can't keep liquids down
-- Oral rehydration solutions (Pedialyte, Gatorade)
-- Avoid alcohol and caffeine
-
-**WHEN TO SEE A DOCTOR:**
-- Symptoms last more than 48 hours
-- High fever (over 101°F)
-- Severe dehydration
-- Blood in vomit or stool
-- Severe abdominal pain
-
-**PREVENTION:**
-- Wash hands frequently
-- Cook food thoroughly
-- Avoid contaminated water
-- Don't share utensils or drinks
-
-What specific stomach symptoms are you experiencing?`;
-        }
-      },
-      type: 'general' as const,
-      followUp: "Are you able to keep fluids down? Any fever or other symptoms?"
-    },
-
-    // Medication and drug information
-    medication: {
-      keywords: ['medication', 'medicine', 'drug', 'pill', 'prescription', 'side effects', 'dosage', 'interaction'],
-      response: (context: string) => {
-        return `💊 **Medication Safety & Information**
-
-**GENERAL MEDICATION GUIDELINES:**
-- **Read labels carefully** - dosage, timing, warnings
-- **Follow instructions exactly** - don't skip doses or double up
-- **Check expiration dates** - don't use expired medications
-- **Store properly** - cool, dry place, away from children
-- **Know your medications** - keep a list with names and dosages
-
-**COMMON MEDICATION CATEGORIES:**
-- **Pain relievers:** Acetaminophen, ibuprofen, aspirin
-- **Antibiotics:** Complete full course as prescribed
-- **Blood pressure:** Take at same time daily
-- **Diabetes:** Monitor blood sugar with medications
-- **Mental health:** Don't stop abruptly, consult doctor
-
-**SIDE EFFECTS TO WATCH:**
-- Allergic reactions (rash, swelling, difficulty breathing)
-- Severe nausea or vomiting
-- Dizziness or confusion
-- Unusual bleeding or bruising
-- Changes in mood or behavior
-
-**DRUG INTERACTIONS:**
-- Always inform doctors of ALL medications
-- Check with pharmacist about new medications
-- Be cautious with alcohol and medications
-- Some foods can affect medication absorption
-
-**WHEN TO CALL YOUR DOCTOR:**
-- Severe side effects
-- Medication not working as expected
-- Questions about dosage or timing
-- Planning to stop or change medications
-
-**EMERGENCY SITUATIONS:**
-- Allergic reaction (call 911)
-- Overdose (call poison control: 1-800-222-1222)
-- Severe side effects
-
-What specific medication questions do you have?`;
-      },
-      type: 'medication' as const,
-      followUp: "What medication are you asking about? Are you experiencing any side effects?"
+      followUp: "Can you describe your headache - is it throbbing, pressure, or sharp? Any other symptoms?"
     },
 
     // General health and wellness
-    general: {
-      keywords: ['hello', 'hi', 'help', 'health', 'sick', 'not feeling well', 'general', 'wellness'],
+    health: {
+      keywords: ['health', 'wellness', 'healthy', 'diet', 'exercise', 'fitness', 'nutrition', 'lifestyle'],
       response: (context: string) => {
-        return `👋 **Welcome to Your AI Health Assistant** 🤖
+        return `I'm here to help with all aspects of health and wellness! Let me share some comprehensive guidance.
 
-I'm here to provide comprehensive health guidance and support! I can help with:
+**Physical Health:**
+- **Exercise**: 150 minutes moderate activity weekly (walking, swimming, cycling)
+- **Strength training**: 2-3 times per week for all major muscle groups
+- **Flexibility**: Daily stretching or yoga
+- **Sleep**: 7-9 hours of quality sleep nightly
+- **Hydration**: 8-10 glasses of water daily
 
-**🩺 HEALTH ASSESSMENT:**
-- Symptom analysis and guidance
-- When to seek medical attention
-- First aid and emergency response
-- Chronic condition management
+**Nutrition:**
+- **Balanced diet**: Fruits, vegetables, whole grains, lean proteins
+- **Portion control**: Use smaller plates, eat slowly
+- **Limit processed foods**: Focus on whole, unprocessed foods
+- **Healthy fats**: Avocados, nuts, olive oil, fatty fish
+- **Fiber**: 25-35g daily from fruits, vegetables, whole grains
 
-**💊 MEDICATION SUPPORT:**
-- Drug information and interactions
-- Dosage and timing questions
-- Side effect monitoring
-- Prescription guidance
+**Mental Health:**
+- **Stress management**: Meditation, deep breathing, hobbies
+- **Social connections**: Maintain relationships with family and friends
+- **Mindfulness**: Practice being present in the moment
+- **Professional help**: Don't hesitate to seek therapy if needed
 
-**🏥 HEALTHCARE NAVIGATION:**
-- Finding appropriate care
-- Understanding medical procedures
-- Preparing for doctor visits
-- Healthcare decision support
+**Preventive Care:**
+- **Regular check-ups**: Annual physical exams
+- **Screenings**: Age-appropriate cancer and health screenings
+- **Vaccinations**: Stay up-to-date with recommended vaccines
+- **Dental care**: Regular cleanings and check-ups
+- **Eye exams**: Regular vision checks
 
-**🌡️ COMMON CONDITIONS:**
-- Colds, flu, and infections
-- Digestive issues
-- Headaches and migraines
-- Skin problems
-- Mental health support
+**Lifestyle Factors:**
+- **Avoid smoking**: Quit if you smoke, avoid secondhand smoke
+- **Limit alcohol**: Moderation is key (1 drink/day women, 2 men)
+- **Sun protection**: Use sunscreen, avoid peak sun hours
+- **Safety**: Wear seatbelts, helmets, practice safe sex
 
-**🚨 EMERGENCY GUIDANCE:**
-- Recognizing medical emergencies
-- First aid instructions
-- When to call 911
-- Hospital location services
+**Warning Signs to Watch:**
+- Unexplained weight loss or gain
+- Persistent fatigue
+- Changes in sleep patterns
+- Mood changes lasting more than 2 weeks
+- New or unusual symptoms
 
-**💡 WELLNESS TIPS:**
-- Preventive care
-- Healthy lifestyle choices
-- Stress management
-- Nutrition guidance
+What specific aspect of health would you like to focus on? I can provide more detailed guidance on any topic.`
+      },
+      type: 'lifestyle' as const,
+      followUp: "What health goals are you working towards? I can help create a personalized plan."
+    },
 
-**How can I help you today?** Feel free to describe your symptoms, ask about medications, or discuss any health concerns. I'm here to provide accurate, helpful information while always encouraging professional medical care when needed.
+    // Technology and science
+    technology: {
+      keywords: ['technology', 'computer', 'phone', 'internet', 'ai', 'artificial intelligence', 'software', 'programming'],
+      response: (context: string) => {
+        return `Technology is fascinating! I'd be happy to discuss any tech topics you're curious about.
 
-*Remember: I provide general health information only. For medical emergencies, call emergency services immediately.*`;
+**Current Tech Trends:**
+- **Artificial Intelligence**: Machine learning, neural networks, ChatGPT, automation
+- **Mobile Technology**: Smartphones, apps, 5G networks, mobile payments
+- **Cloud Computing**: Remote storage, software as a service, scalability
+- **Internet of Things**: Smart homes, connected devices, sensors
+- **Cybersecurity**: Data protection, privacy, encryption, safe browsing
+
+**Programming & Development:**
+- **Languages**: Python, JavaScript, Java, C++, Rust, Go
+- **Web Development**: HTML, CSS, React, Node.js, databases
+- **Mobile Apps**: iOS (Swift), Android (Kotlin/Java), cross-platform
+- **Data Science**: Python, R, machine learning, statistics
+- **DevOps**: Cloud platforms, containers, CI/CD, monitoring
+
+**Emerging Technologies:**
+- **Quantum Computing**: Revolutionary processing power
+- **Blockchain**: Cryptocurrency, smart contracts, decentralized systems
+- **Virtual/Augmented Reality**: Immersive experiences, training, gaming
+- **Robotics**: Automation, AI integration, human-robot interaction
+- **Biotechnology**: Gene editing, personalized medicine, synthetic biology
+
+**Tech in Healthcare:**
+- **Telemedicine**: Remote consultations, health monitoring
+- **Wearables**: Fitness trackers, health monitoring devices
+- **AI Diagnostics**: Medical imaging, pattern recognition
+- **Electronic Health Records**: Digital patient data management
+- **Precision Medicine**: Personalized treatments based on genetics
+
+**Learning Resources:**
+- **Online Courses**: Coursera, edX, Udemy, Khan Academy
+- **Documentation**: Official docs, Stack Overflow, GitHub
+- **Communities**: Reddit, Discord, professional networks
+- **Practice**: Coding challenges, personal projects, open source
+
+What specific technology topic interests you? I can dive deeper into any area!`
+      },
+      type: 'technology' as const,
+      followUp: "Are you interested in learning about a specific technology or looking for career guidance in tech?"
+    },
+
+    // Science and education
+    science: {
+      keywords: ['science', 'physics', 'chemistry', 'biology', 'math', 'mathematics', 'research', 'experiment'],
+      response: (context: string) => {
+        return `Science is incredible! I love discussing scientific concepts and discoveries.
+
+**Major Scientific Fields:**
+
+**Physics:**
+- **Classical Mechanics**: Motion, forces, energy, momentum
+- **Thermodynamics**: Heat, temperature, energy transfer
+- **Electromagnetism**: Electric and magnetic fields, waves
+- **Quantum Mechanics**: Subatomic particles, wave-particle duality
+- **Relativity**: Space-time, gravity, cosmic phenomena
+
+**Chemistry:**
+- **Organic Chemistry**: Carbon-based compounds, reactions
+- **Inorganic Chemistry**: Metals, minerals, non-carbon compounds
+- **Physical Chemistry**: Thermodynamics, kinetics, quantum chemistry
+- **Biochemistry**: Chemical processes in living organisms
+- **Analytical Chemistry**: Measurement and analysis techniques
+
+**Biology:**
+- **Cell Biology**: Structure and function of cells
+- **Genetics**: DNA, inheritance, gene expression
+- **Evolution**: Natural selection, adaptation, speciation
+- **Ecology**: Ecosystems, biodiversity, environmental interactions
+- **Human Biology**: Anatomy, physiology, health
+
+**Mathematics:**
+- **Algebra**: Equations, functions, graphing
+- **Calculus**: Derivatives, integrals, limits
+- **Statistics**: Data analysis, probability, hypothesis testing
+- **Geometry**: Shapes, spatial relationships, proofs
+- **Number Theory**: Prime numbers, divisibility, patterns
+
+**Scientific Method:**
+1. **Observation**: Notice something interesting
+2. **Question**: Ask "why" or "how"
+3. **Hypothesis**: Make an educated guess
+4. **Experiment**: Test your hypothesis
+5. **Analysis**: Examine the results
+6. **Conclusion**: Determine if hypothesis was correct
+7. **Communication**: Share findings with others
+
+**Recent Scientific Discoveries:**
+- **CRISPR Gene Editing**: Precise DNA modification
+- **Gravitational Waves**: Ripples in space-time
+- **Exoplanets**: Planets outside our solar system
+- **Quantum Supremacy**: Quantum computers solving complex problems
+- **COVID-19 Vaccines**: mRNA technology breakthrough
+
+**Learning Science:**
+- **Hands-on experiments**: Kitchen chemistry, physics demos
+- **Online resources**: Khan Academy, Coursera, MIT OpenCourseWare
+- **Documentaries**: Nature, Nova, Cosmos
+- **Books**: Popular science, textbooks, biographies
+- **Museums**: Science centers, planetariums, natural history
+
+What scientific topic would you like to explore? I can explain complex concepts in simple terms!`
+      },
+      type: 'science' as const,
+      followUp: "Are you interested in a specific scientific field or looking for help with a particular concept?"
+    },
+
+    // General knowledge and questions
+    general: {
+      keywords: ['hello', 'hi', 'help', 'what is', 'how does', 'explain', 'tell me about', 'question'],
+      response: (context: string) => {
+        return `Hello! I'm your AI assistant, and I'm here to help with any questions you have. I can discuss a wide range of topics including:
+
+**Health & Medicine:**
+- Symptoms, conditions, treatments
+- Sexual health, contraception, relationships
+- Mental health, wellness, lifestyle
+- Emergency situations, first aid
+
+**Science & Technology:**
+- Physics, chemistry, biology, mathematics
+- Computers, programming, artificial intelligence
+- Space, environment, climate
+- Research, experiments, discoveries
+
+**General Knowledge:**
+- History, geography, culture
+- Current events, politics, economics
+- Arts, literature, philosophy
+- Sports, entertainment, hobbies
+
+**Practical Advice:**
+- Problem-solving, decision-making
+- Learning strategies, study tips
+- Career guidance, skill development
+- Life skills, relationships, communication
+
+**How I can help:**
+- Answer specific questions with detailed explanations
+- Provide step-by-step guidance for complex topics
+- Offer multiple perspectives on controversial subjects
+- Suggest resources for deeper learning
+- Help you think through problems logically
+
+**My approach:**
+- I provide accurate, evidence-based information
+- I'm respectful and inclusive in all discussions
+- I encourage critical thinking and further research
+- I'm honest about limitations and uncertainties
+- I prioritize your safety and well-being
+
+What would you like to know about? Feel free to ask me anything - no topic is off-limits for respectful, educational discussion!`
       },
       type: 'general' as const,
-      followUp: "What health concern would you like to discuss? I'm here to help with any questions you have."
+      followUp: "What specific topic or question would you like to explore? I'm here to help with anything you're curious about."
     }
   };
 
   const getBotResponse = (userMessage: string): string => {
     const message = userMessage.toLowerCase();
     
-    // Check for emergency keywords first
-    for (const [key, knowledge] of Object.entries(healthKnowledge)) {
+    // Check for specific topics first
+    for (const [key, knowledge] of Object.entries(aiKnowledge)) {
       if (knowledge.keywords.some(keyword => message.includes(keyword))) {
         return knowledge.response(userMessage);
       }
     }
     
-    // Default intelligent response
-    return `I understand you're not feeling well. Let me help you get the right guidance.
+    // Default intelligent response for any question
+    return `I understand you have a question! I'm designed to help with a wide range of topics including health, science, technology, relationships, and general knowledge.
 
-**To provide the best assistance, could you tell me:**
-- What specific symptoms are you experiencing?
-- When did they start?
-- How severe would you rate them (1-10)?
-- Any other symptoms you've noticed?
+**To give you the best answer, could you:**
+- Be more specific about what you'd like to know?
+- Provide more context about your question?
+- Let me know if this is about health, technology, science, or something else?
 
 **I can help with:**
-- Symptom assessment and guidance
-- When to seek medical attention
-- Home care recommendations
-- Emergency situation recognition
-- Medication questions
-- Finding appropriate healthcare
+- **Health questions**: Symptoms, treatments, sexual health, mental health
+- **Educational topics**: Science, math, history, literature
+- **Technology**: Programming, AI, computers, internet
+- **Life advice**: Relationships, career, personal development
+- **General knowledge**: Any topic you're curious about
 
-**For immediate emergencies:**
-- Call 911 if you're experiencing severe symptoms
-- Use QuickER to find the nearest hospital
-- Don't delay seeking professional help
+**Examples of questions I can answer:**
+- "What causes headaches and how can I treat them?"
+- "How does artificial intelligence work?"
+- "What are the different types of contraception?"
+- "Explain quantum physics in simple terms"
+- "How do I improve my study habits?"
 
-What would you like to discuss? I'm here to provide comprehensive health guidance while always encouraging professional medical care when needed.`;
+What specific topic would you like to explore? I'm here to provide comprehensive, helpful information on just about anything!`
   };
 
   const getMessageType = (userMessage: string): Message['type'] => {
     const message = userMessage.toLowerCase();
     
-    for (const [key, knowledge] of Object.entries(healthKnowledge)) {
+    for (const [key, knowledge] of Object.entries(aiKnowledge)) {
       if (knowledge.keywords.some(keyword => message.includes(keyword))) {
         return knowledge.type;
       }
@@ -556,7 +467,7 @@ What would you like to discuss? I'm here to provide comprehensive health guidanc
   const getFollowUpQuestion = (userMessage: string): string | null => {
     const message = userMessage.toLowerCase();
     
-    for (const [key, knowledge] of Object.entries(healthKnowledge)) {
+    for (const [key, knowledge] of Object.entries(aiKnowledge)) {
       if (knowledge.keywords.some(keyword => message.includes(keyword))) {
         return knowledge.followUp || null;
       }
@@ -579,8 +490,8 @@ What would you like to discuss? I'm here to provide comprehensive health guidanc
     setInputText('');
     setIsTyping(true);
 
-    // Simulate bot thinking time with variable delay based on complexity
-    const thinkingTime = 800 + Math.random() * 1200; // 0.8-2 seconds
+    // Simulate realistic AI thinking time
+    const thinkingTime = 600 + Math.random() * 800; // 0.6-1.4 seconds
     
     setTimeout(() => {
       const botResponse = getBotResponse(inputText);
@@ -608,7 +519,7 @@ What would you like to discuss? I'm here to provide comprehensive health guidanc
             type: 'general'
           };
           setMessages(prev => [...prev, followUpMessage]);
-        }, 500);
+        }, 800);
       }
       
       setIsTyping(false);
@@ -630,6 +541,14 @@ What would you like to discuss? I'm here to provide comprehensive health guidanc
         return <Stethoscope className="w-5 h-5 text-blue-500" />;
       case 'medication':
         return <Pill className="w-5 h-5 text-green-500" />;
+      case 'education':
+        return <BookOpen className="w-5 h-5 text-purple-500" />;
+      case 'science':
+        return <Lightbulb className="w-5 h-5 text-yellow-500" />;
+      case 'technology':
+        return <Zap className="w-5 h-5 text-blue-600" />;
+      case 'lifestyle':
+        return <Heart className="w-5 h-5 text-pink-500" />;
       default:
         return <Bot className="w-5 h-5 text-primary" />;
     }
@@ -640,23 +559,31 @@ What would you like to discuss? I'm here to provide comprehensive health guidanc
       case 'emergency':
         return <Badge variant="destructive" className="text-xs">Emergency</Badge>;
       case 'symptom':
-        return <Badge variant="secondary" className="text-xs">Symptom Check</Badge>;
+        return <Badge variant="secondary" className="text-xs">Health</Badge>;
       case 'medication':
         return <Badge variant="outline" className="text-xs">Medication</Badge>;
+      case 'education':
+        return <Badge variant="outline" className="text-xs">Education</Badge>;
+      case 'science':
+        return <Badge variant="outline" className="text-xs">Science</Badge>;
+      case 'technology':
+        return <Badge variant="outline" className="text-xs">Technology</Badge>;
+      case 'lifestyle':
+        return <Badge variant="outline" className="text-xs">Lifestyle</Badge>;
       default:
         return null;
     }
   };
 
   const quickActions = [
-    { text: "I have chest pain", icon: Heart, category: "emergency" },
-    { text: "I can't breathe properly", icon: AlertTriangle, category: "emergency" },
-    { text: "I have a fever", icon: Stethoscope, category: "general" },
-    { text: "I have a headache", icon: Bot, category: "general" },
-    { text: "Stomach pain and nausea", icon: Stethoscope, category: "general" },
-    { text: "Medication questions", icon: Pill, category: "medication" },
-    { text: "Find nearest hospital", icon: Phone, category: "emergency" },
-    { text: "General health advice", icon: Bot, category: "general" }
+    { text: "What is sex?", icon: Heart, category: "education" },
+    { text: "How do condoms work?", icon: Pill, category: "education" },
+    { text: "I have a headache", icon: Stethoscope, category: "general" },
+    { text: "Explain AI to me", icon: Zap, category: "technology" },
+    { text: "How does gravity work?", icon: Lightbulb, category: "science" },
+    { text: "Health and wellness tips", icon: Heart, category: "lifestyle" },
+    { text: "Emergency help", icon: AlertTriangle, category: "emergency" },
+    { text: "Ask me anything", icon: Bot, category: "general" }
   ];
 
   return (
@@ -668,8 +595,8 @@ What would you like to discuss? I'm here to provide comprehensive health guidanc
             <Bot className="w-6 h-6 text-primary" />
           </div>
           <div>
-            <h2 className="font-semibold text-lg">Health Assistant</h2>
-            <p className="text-sm text-muted-foreground">Ask me about your health concerns</p>
+            <h2 className="font-semibold text-lg">AI Assistant</h2>
+            <p className="text-sm text-muted-foreground">Ask me anything - I'm here to help!</p>
           </div>
         </div>
       </div>
@@ -679,24 +606,24 @@ What would you like to discuss? I'm here to provide comprehensive health guidanc
         {messages.length === 0 && (
           <div className="text-center py-8">
             <Bot className="w-16 h-16 text-muted-foreground mx-auto mb-4 opacity-50" />
-            <h3 className="text-lg font-semibold mb-2">Welcome to Health Assistant</h3>
+            <h3 className="text-lg font-semibold mb-2">Welcome to Your AI Assistant</h3>
             <p className="text-muted-foreground mb-4">
-              I'm here to help with your health questions. Ask me about symptoms, medications, or emergencies.
+              I'm here to help with any questions you have! I can discuss health, science, technology, relationships, and much more.
             </p>
             <div className="space-y-3">
-              <p className="text-sm text-muted-foreground text-center">Quick actions:</p>
+              <p className="text-sm text-muted-foreground text-center">Try asking me about:</p>
               <div className="space-y-2">
-                {/* Emergency Actions */}
+                {/* Education Topics */}
                 <div>
-                  <p className="text-xs font-semibold text-red-600 mb-1">🚨 Emergency</p>
+                  <p className="text-xs font-semibold text-purple-600 mb-1">📚 Education & Health</p>
                   <div className="flex flex-wrap gap-1">
-                    {quickActions.filter(a => a.category === 'emergency').map((action, index) => (
+                    {quickActions.filter(a => a.category === 'education').map((action, index) => (
                       <Button
                         key={index}
                         variant="outline"
                         size="sm"
                         onClick={() => setInputText(action.text)}
-                        className="text-xs border-red-200 text-red-700 hover:bg-red-50"
+                        className="text-xs border-purple-200 text-purple-700 hover:bg-purple-50"
                       >
                         <action.icon className="w-3 h-3 mr-1" />
                         {action.text}
@@ -705,11 +632,11 @@ What would you like to discuss? I'm here to provide comprehensive health guidanc
                   </div>
                 </div>
                 
-                {/* General Health */}
+                {/* Science & Tech */}
                 <div>
-                  <p className="text-xs font-semibold text-blue-600 mb-1">🩺 General Health</p>
+                  <p className="text-xs font-semibold text-blue-600 mb-1">🔬 Science & Technology</p>
                   <div className="flex flex-wrap gap-1">
-                    {quickActions.filter(a => a.category === 'general').map((action, index) => (
+                    {quickActions.filter(a => a.category === 'science' || a.category === 'technology').map((action, index) => (
                       <Button
                         key={index}
                         variant="outline"
@@ -724,11 +651,11 @@ What would you like to discuss? I'm here to provide comprehensive health guidanc
                   </div>
                 </div>
                 
-                {/* Medication */}
+                {/* General & Emergency */}
                 <div>
-                  <p className="text-xs font-semibold text-green-600 mb-1">💊 Medication</p>
+                  <p className="text-xs font-semibold text-green-600 mb-1">💬 General & Emergency</p>
                   <div className="flex flex-wrap gap-1">
-                    {quickActions.filter(a => a.category === 'medication').map((action, index) => (
+                    {quickActions.filter(a => a.category === 'general' || a.category === 'emergency' || a.category === 'lifestyle').map((action, index) => (
                       <Button
                         key={index}
                         variant="outline"
@@ -758,9 +685,9 @@ What would you like to discuss? I'm here to provide comprehensive health guidanc
               </div>
             )}
             
-            <div className={`max-w-[80%] ${message.sender === 'user' ? 'order-first' : ''}`}>
+            <div className={`max-w-[85%] ${message.sender === 'user' ? 'order-first' : ''}`}>
               <div
-                className={`p-3 rounded-2xl ${
+                className={`p-4 rounded-2xl ${
                   message.sender === 'user'
                     ? 'bg-primary text-primary-foreground ml-auto'
                     : 'bg-muted'
@@ -768,7 +695,7 @@ What would you like to discuss? I'm here to provide comprehensive health guidanc
               >
                 <div className="flex items-start gap-2">
                   <div className="flex-1">
-                    <div className="whitespace-pre-wrap text-sm">{message.text}</div>
+                    <div className="whitespace-pre-wrap text-sm leading-relaxed">{message.text}</div>
                     {message.type && message.sender === 'bot' && (
                       <div className="mt-2">
                         {getMessageBadge(message.type)}
@@ -795,7 +722,7 @@ What would you like to discuss? I'm here to provide comprehensive health guidanc
             <div className="w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center">
               <Bot className="w-5 h-5 text-primary" />
             </div>
-            <div className="bg-muted p-3 rounded-2xl">
+            <div className="bg-muted p-4 rounded-2xl">
               <div className="flex space-x-1">
                 <div className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce"></div>
                 <div className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
@@ -815,7 +742,7 @@ What would you like to discuss? I'm here to provide comprehensive health guidanc
             value={inputText}
             onChange={(e) => setInputText(e.target.value)}
             onKeyPress={handleKeyPress}
-            placeholder="Ask about your health concerns..."
+            placeholder="Ask me anything - health, science, technology, relationships..."
             className="flex-1"
             disabled={isTyping}
           />
@@ -829,8 +756,8 @@ What would you like to discuss? I'm here to provide comprehensive health guidanc
         </div>
         
         <div className="mt-2 text-xs text-muted-foreground text-center">
-          <AlertTriangle className="w-3 h-3 inline mr-1" />
-          For medical emergencies, call emergency services immediately
+          <Search className="w-3 h-3 inline mr-1" />
+          I can discuss any topic respectfully and informatively. Ask me anything!
         </div>
       </div>
     </div>

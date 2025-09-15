@@ -1,9 +1,10 @@
 import { Button } from "@/components/ui/button";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { useLanguage } from "@/contexts/LanguageContext";
 
 const Header = () => {
   const { t, language } = useLanguage();
+  const location = useLocation();
   
   return (
     <header className="bg-background border-b border-border">
@@ -33,9 +34,11 @@ const Header = () => {
           </nav>
           
           <div className={`flex items-center space-x-4 ${language === 'ar' ? 'space-x-reverse' : ''}`}>
-            <Button variant="outline" size="sm" asChild>
-              <Link to="/onboarding">{t('btn.getStarted')}</Link>
-            </Button>
+            {location.pathname !== '/' && location.pathname !== '/onboarding' && (
+              <Button variant="outline" size="sm" asChild>
+                <Link to="/onboarding">{t('btn.getStarted')}</Link>
+              </Button>
+            )}
             <Button size="sm" variant="emergency" asChild>
               <Link to="/home">{t('btn.emergency')}</Link>
             </Button>

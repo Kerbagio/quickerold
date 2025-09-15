@@ -79,7 +79,7 @@ const Onboarding = () => {
   const completeOnboarding = () => {
     localStorage.setItem('onboardingDone', 'true');
     localStorage.setItem('preferredLanguage', language);
-    navigate('/');
+    navigate('/home');
   };
 
   const nextSlide = () => {

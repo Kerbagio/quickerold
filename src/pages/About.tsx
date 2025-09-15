@@ -28,7 +28,7 @@ const About = () => {
         <div className="container mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
             <Button variant="ghost" asChild>
-              <Link to="/" className="flex items-center">
+              <Link to="/home" className="flex items-center">
                 <ArrowLeft className="w-4 h-4 mr-2" />
                 {t('about.backToHome')}
               </Link>

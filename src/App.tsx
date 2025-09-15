@@ -32,7 +32,8 @@ const App = () => (
         <OfflineNotice />
         <BrowserRouter>
           <Routes>
-            <Route path="/" element={<Index />} />
+            <Route path="/" element={<Onboarding />} />
+            <Route path="/home" element={<Index />} />
             <Route path="/options" element={<Options />} />
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/health-assistant" element={<HealthAssistant />} />

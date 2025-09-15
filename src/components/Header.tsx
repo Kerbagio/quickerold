@@ -9,7 +9,7 @@ const Header = () => {
     <header className="bg-background border-b border-border">
       <div className="container mx-auto px-6 py-4">
         <div className={`flex items-center justify-between ${language === 'ar' ? 'flex-row-reverse' : ''}`}>
-          <Link to="/" className="flex items-center space-x-3">
+          <Link to="/home" className="flex items-center space-x-3">
             <img 
               src="/logo-quicker.svg" 
               alt="QuickER Logo" 
@@ -37,7 +37,7 @@ const Header = () => {
               <Link to="/onboarding">{t('btn.getStarted')}</Link>
             </Button>
             <Button size="sm" variant="emergency" asChild>
-              <Link to="/">{t('btn.emergency')}</Link>
+              <Link to="/home">{t('btn.emergency')}</Link>
             </Button>
           </div>
         </div>

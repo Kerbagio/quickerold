@@ -9,10 +9,10 @@ const BottomNav = () => {
   
   const navItems = [
     { 
-      path: "/", 
+      path: "/home", 
       icon: Home, 
       label: t('nav.home'),
-      isActive: location.pathname === "/"
+      isActive: location.pathname === "/home"
     },
     { 
       path: "/options", 

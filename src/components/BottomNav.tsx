@@ -1,4 +1,4 @@
-import { Home, Settings, BarChart3, Filter, Bot } from "lucide-react";
+import { Home, Settings, Filter } from "lucide-react";
 import { useLocation, Link } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -19,18 +19,6 @@ const BottomNav = () => {
       icon: Filter, 
       label: t('nav.options'),
       isActive: location.pathname === "/options"
-    },
-    { 
-      path: "/health-assistant", 
-      icon: Bot, 
-      label: "Health",
-      isActive: location.pathname === "/health-assistant"
-    },
-    { 
-      path: "/dashboard", 
-      icon: BarChart3, 
-      label: t('nav.dashboard'),
-      isActive: location.pathname === "/dashboard"
     },
     { 
       path: "/settings", 

@@ -88,24 +88,30 @@ const HealthChatbot = () => {
     return () => window.removeEventListener('resize', handleResize);
   }, [isMobile]);
 
-  // Comprehensive AI Knowledge Base - ChatGPT-like responses
+  // Comprehensive AI Knowledge Base - Enhanced with hospital decision logic
   const aiKnowledge = {
     // Emergency conditions
     emergency: {
-      keywords: ['emergency', 'urgent', 'severe', 'critical', 'life threatening', 'dying', 'help me', '911'],
+      keywords: ['emergency', 'urgent', 'severe', 'critical', 'life threatening', 'dying', 'help me', '911', 'chest pain', 'can\'t breathe', 'unconscious', 'severe bleeding'],
       response: (context: string) => {
-        return `I understand you're experiencing a serious medical situation. This requires immediate professional medical attention.
+        return `🚨 **EMERGENCY SITUATION DETECTED** 🚨
 
-**Call emergency services right now:**
+This requires **IMMEDIATE** professional medical attention. You should go to the hospital right now.
+
+**Call emergency services immediately:**
 - **911** (US/Canada)
 - **112** (Europe)
 - **999** (UK)
+- **000** (Australia)
 
 **While waiting for help:**
 - Stay calm and follow operator instructions
 - Keep airways clear
 - Don't move if you suspect injury
 - Have someone stay with you
+- If alone, unlock your door for emergency responders
+
+**This is NOT something to wait on or treat at home. Go to the hospital immediately.**
 
 I cannot provide emergency medical advice - this needs immediate professional attention. Please call emergency services now.`
       },
@@ -113,91 +119,151 @@ I cannot provide emergency medical advice - this needs immediate professional at
       followUp: "Are you able to call emergency services? I can help you find the nearest hospital once you're stable."
     },
 
-    // Sexual health and education
-    sex: {
-      keywords: ['sex', 'sexual', 'intercourse', 'intimacy', 'reproduction', 'sexuality', 'sexual health'],
+    // Fever and infections
+    fever: {
+      keywords: ['fever', 'temperature', 'hot', 'burning up', 'chills', 'sweating', 'infection', 'flu', 'cold'],
       response: (context: string) => {
-        return `I'm happy to discuss sexual health and education in a mature, informative way.
+        return `Fever is your body's natural response to infection or illness. Here's what you need to know:
 
-**Sexual Health Basics:**
-Sex is a natural part of human life involving physical intimacy between consenting adults. It's important to approach it with knowledge, respect, and safety.
+**What is a fever?**
+- Normal body temperature: 98.6°F (37°C)
+- Fever: 100.4°F (38°C) or higher
+- High fever: 103°F (39.4°C) or higher
 
-**Key Aspects:**
-- **Consent** - Always enthusiastic, ongoing, and clear consent from all parties
-- **Safety** - Use protection to prevent STIs and unwanted pregnancy
-- **Communication** - Open, honest discussion about boundaries and preferences
-- **Health** - Regular check-ups and honest discussions with healthcare providers
+**When to go to the hospital:**
+- **Temperature above 104°F (40°C)**
+- **Fever lasting more than 3 days**
+- **Fever with severe headache, stiff neck, or rash**
+- **Fever with difficulty breathing**
+- **Fever in infants under 3 months**
+- **Fever with confusion or seizures**
 
-**Safe Sex Practices:**
-- Use condoms consistently and correctly
-- Get tested regularly for STIs
-- Discuss sexual history with partners
-- Consider birth control options if pregnancy prevention is desired
+**Home care for mild fever:**
+- Rest and stay hydrated
+- Take acetaminophen or ibuprofen
+- Use cool compresses
+- Wear light clothing
+- Monitor temperature regularly
 
-**When to Seek Help:**
-- Concerns about sexual function or satisfaction
-- Questions about contraception or family planning
-- STI symptoms or exposure
-- Sexual health concerns
+**Seek medical care if:**
+- Fever persists despite treatment
+- You have other concerning symptoms
+- You feel very unwell
+- Fever returns after improving
 
-Would you like me to elaborate on any specific aspect of sexual health?`
+**When to call your doctor:**
+- Fever over 102°F (38.9°C) in adults
+- Fever with other symptoms
+- Fever that doesn't respond to medication
+- Concerns about your condition
+
+What's your current temperature and how long have you had the fever?`
       },
-      type: 'education' as const,
-      followUp: "Is there a specific aspect of sexual health you'd like to know more about?"
+      type: 'symptom' as const,
+      followUp: "What's your temperature reading and are you experiencing any other symptoms?"
     },
 
-    // Contraception and protection
-    condom: {
-      keywords: ['condom', 'contraception', 'birth control', 'protection', 'safe sex', 'prevent pregnancy', 'sti prevention'],
+    // Chest pain and heart issues
+    chestPain: {
+      keywords: ['chest pain', 'heart pain', 'chest tightness', 'heart attack', 'angina', 'chest pressure', 'heartburn', 'chest discomfort'],
       response: (context: string) => {
-        return `Condoms are an essential tool for safe sex and preventing both STIs and unwanted pregnancy.
+        return `⚠️ **CHEST PAIN REQUIRES IMMEDIATE ATTENTION** ⚠️
 
-**What are condoms?**
-Condoms are thin sheaths (usually made of latex, polyurethane, or lambskin) that cover the penis during sex to prevent sperm from reaching the egg and to reduce STI transmission.
+**Go to the hospital immediately if you have:**
+- **Severe chest pain or pressure**
+- **Pain spreading to arm, neck, jaw, or back**
+- **Shortness of breath**
+- **Nausea, sweating, or dizziness with chest pain**
+- **Pain lasting more than 15 minutes**
 
-**Types of condoms:**
-- **Male condoms** - Worn on the penis
-- **Female condoms** - Inserted into the vagina
-- **Latex** - Most common, effective against STIs
-- **Polyurethane** - For latex allergies
-- **Lambskin** - Natural but less effective against STIs
+**Call 911 immediately - this could be a heart attack!**
 
-**How to use condoms correctly:**
-1. Check expiration date and package integrity
-2. Open carefully (don't use teeth)
-3. Pinch the tip to leave space for semen
-4. Roll down completely over erect penis
-5. Use water-based lubricant if needed
-6. Hold base when withdrawing
-7. Dispose of properly after use
+**Less urgent chest pain causes:**
+- **Heartburn/acid reflux** - Burning sensation, worse after eating
+- **Muscle strain** - Pain with movement, tender to touch
+- **Anxiety** - Tightness, often with rapid breathing
+- **Costochondritis** - Sharp pain, worse with deep breaths
 
-**Effectiveness:**
-- **Perfect use**: 98% effective against pregnancy
-- **Typical use**: 85% effective against pregnancy
-- **STI protection**: Significantly reduces risk of most STIs
+**When to go to ER:**
+- Any severe chest pain
+- Pain with shortness of breath
+- Pain radiating to other areas
+- Pain with nausea/vomiting
+- Pain lasting more than 15 minutes
+- Pain that's different from usual
 
-**When to use:**
-- Every time you have vaginal, anal, or oral sex
-- From start to finish of sexual activity
-- Even if using other birth control methods
+**When to see doctor soon:**
+- Mild chest pain that persists
+- Pain with certain activities
+- Recurring chest discomfort
+- Pain that worries you
 
-**Common mistakes:**
-- Not checking expiration date
-- Using oil-based lubricants with latex
-- Not leaving space at the tip
-- Putting on too late or removing too early
+**This is serious - if in doubt, go to the hospital immediately.**
 
-Do you have specific questions about condom use or other contraception methods?`
+Are you experiencing any of the severe symptoms I mentioned?`
       },
-      type: 'education' as const,
-      followUp: "Would you like to know about other types of contraception or safe sex practices?"
+      type: 'emergency' as const,
+      followUp: "Are you having any shortness of breath or pain in your arms, neck, or jaw?"
+    },
+
+    // Breathing problems
+    breathing: {
+      keywords: ['can\'t breathe', 'shortness of breath', 'breathing problems', 'wheezing', 'asthma', 'choking', 'suffocating', 'chest tightness'],
+      response: (context: string) => {
+        return `🚨 **BREATHING PROBLEMS ARE SERIOUS** 🚨
+
+**Go to the hospital immediately if you have:**
+- **Severe shortness of breath**
+- **Can't speak in full sentences**
+- **Lips or fingernails turning blue**
+- **Chest pain with breathing**
+- **Rapid breathing (over 30 breaths per minute)**
+- **Feeling like you're suffocating**
+
+**Call 911 immediately!**
+
+**Common causes of breathing problems:**
+- **Asthma attack** - Wheezing, tight chest, difficulty exhaling
+- **Anxiety/panic attack** - Rapid breathing, feeling of suffocation
+- **Allergic reaction** - Swelling, hives, difficulty breathing
+- **Pneumonia** - Fever, cough, chest pain with breathing
+- **Heart problems** - Chest pain, fatigue, swelling
+
+**When to go to ER:**
+- Any severe breathing difficulty
+- Blue lips or fingernails
+- Can't speak normally
+- Chest pain with breathing
+- Rapid breathing
+- Feeling of suffocation
+
+**When to see doctor soon:**
+- Mild breathing problems that persist
+- Wheezing that doesn't improve
+- Breathing problems with other symptoms
+- Recurring breathing issues
+
+**This is an emergency - go to the hospital now if you're having severe trouble breathing.**
+
+Are you able to speak in full sentences right now?`
+      },
+      type: 'emergency' as const,
+      followUp: "Are you experiencing any chest pain or do your lips look blue?"
     },
 
     // Headaches and pain
     headache: {
       keywords: ['headache', 'head pain', 'migraine', 'head ache', 'head pounding', 'tension headache', 'head hurts'],
       response: (context: string) => {
-        return `Headaches are one of the most common health complaints. Let me help you understand the different types and what you can do about them.
+        return `Headaches are one of the most common health complaints. Let me help you understand when to seek help.
+
+**When to go to the hospital immediately:**
+- **Sudden, severe headache (worst of your life)**
+- **Headache with fever, stiff neck, or rash**
+- **Headache after head injury**
+- **Headache with vision changes, confusion, or weakness**
+- **Headache with difficulty speaking or walking**
+- **Headache that wakes you from sleep**
 
 **Types of Headaches:**
 
@@ -224,27 +290,18 @@ Do you have specific questions about condom use or other contraception methods?`
 - Often worse when bending forward
 - Usually accompanied by nasal congestion
 
-**Immediate Relief:**
+**Home care for mild headaches:**
 - Rest in a quiet, dark room
 - Apply cold compress to forehead or neck
 - Stay hydrated (dehydration causes headaches)
 - Gentle massage of temples and neck
 - Over-the-counter pain relievers (acetaminophen, ibuprofen, aspirin)
 
-**Lifestyle Factors:**
-- **Sleep**: 7-9 hours consistently
-- **Hydration**: 8 glasses of water daily
-- **Stress management**: Deep breathing, meditation, exercise
-- **Regular meals**: Don't skip meals
-- **Caffeine**: Limit intake (withdrawal can cause headaches)
-
-**When to Seek Medical Help:**
-- Sudden, severe headache (worst of your life)
-- Headache with fever, stiff neck, or rash
-- Headache after head injury
-- Headache with vision changes, confusion, or weakness
+**When to see a doctor:**
 - Frequent headaches that interfere with daily life
 - New headache pattern after age 50
+- Headaches that don't respond to over-the-counter medication
+- Headaches with other concerning symptoms
 
 **Prevention:**
 - Identify and avoid triggers
@@ -254,10 +311,173 @@ Do you have specific questions about condom use or other contraception methods?`
 - Regular exercise
 - Limit alcohol and processed foods
 
-What type of headache are you experiencing? I can provide more specific guidance based on your symptoms.`
+What type of headache are you experiencing? Are you having any of the severe symptoms I mentioned?`
       },
-      type: 'general' as const,
+      type: 'symptom' as const,
       followUp: "Can you describe your headache - is it throbbing, pressure, or sharp? Any other symptoms?"
+    },
+
+    // Stomach and digestive issues
+    stomach: {
+      keywords: ['stomach pain', 'stomach ache', 'abdominal pain', 'belly pain', 'nausea', 'vomiting', 'diarrhea', 'constipation', 'stomach upset'],
+      response: (context: string) => {
+        return `Stomach and digestive issues are common but can range from mild to serious. Here's when to seek help:
+
+**When to go to the hospital immediately:**
+- **Severe abdominal pain that comes on suddenly**
+- **Pain with fever, nausea, and vomiting**
+- **Pain with bloody or black stools**
+- **Pain with difficulty breathing**
+- **Pain that prevents you from moving**
+- **Signs of dehydration (dizziness, no urination)**
+- **Severe vomiting that lasts more than 24 hours**
+
+**Common causes of stomach pain:**
+- **Indigestion** - Burning sensation, bloating, fullness
+- **Food poisoning** - Nausea, vomiting, diarrhea, fever
+- **Stomach flu** - Nausea, vomiting, diarrhea, mild fever
+- **Constipation** - Hard stools, bloating, discomfort
+- **Gas** - Cramping, bloating, relief with passing gas
+- **Stress/anxiety** - Nervous stomach, butterflies
+
+**When to see a doctor soon:**
+- Pain that persists for more than a few days
+- Pain that gets worse
+- Pain with other symptoms
+- Unexplained weight loss
+- Changes in bowel habits
+- Blood in stool or vomit
+
+**Home care for mild stomach issues:**
+- Rest and stay hydrated
+- Eat bland foods (bananas, rice, toast)
+- Avoid dairy, spicy, or fatty foods
+- Use heating pad for cramps
+- Over-the-counter antacids for heartburn
+
+**Signs of dehydration:**
+- Dry mouth and throat
+- Dizziness when standing
+- Dark urine or no urination
+- Fatigue and weakness
+
+Are you experiencing any of the severe symptoms I mentioned?`
+      },
+      type: 'symptom' as const,
+      followUp: "How long have you had the stomach pain and are you experiencing any vomiting or fever?"
+    },
+
+    // Cold and flu symptoms
+    coldFlu: {
+      keywords: ['cold', 'flu', 'cough', 'sore throat', 'runny nose', 'congestion', 'sneezing', 'influenza', 'respiratory infection'],
+      response: (context: string) => {
+        return `Cold and flu are common respiratory infections. Here's how to tell the difference and when to seek help:
+
+**When to go to the hospital:**
+- **Difficulty breathing or shortness of breath**
+- **High fever (over 103°F/39.4°C) that doesn't respond to medication**
+- **Severe dehydration (can't keep fluids down)**
+- **Confusion or altered mental state**
+- **Chest pain with breathing**
+- **Blue lips or fingernails**
+
+**Cold vs Flu symptoms:**
+
+**Common Cold:**
+- Gradual onset
+- Runny/stuffy nose
+- Sneezing
+- Sore throat
+- Mild cough
+- Usually no fever or mild fever
+- Lasts 3-7 days
+
+**Influenza (Flu):**
+- Sudden onset
+- High fever (100-102°F)
+- Body aches and chills
+- Fatigue and weakness
+- Dry cough
+- Headache
+- Can last 1-2 weeks
+
+**When to see a doctor:**
+- Symptoms lasting more than 10 days
+- High fever that persists
+- Severe sore throat with difficulty swallowing
+- Ear pain or sinus pressure
+- Wheezing or difficulty breathing
+- Symptoms that improve then worsen
+
+**Home care:**
+- Rest and stay hydrated
+- Use humidifier or steam
+- Gargle with salt water for sore throat
+- Over-the-counter medications for symptoms
+- Stay home to avoid spreading illness
+
+**Prevention:**
+- Wash hands frequently
+- Avoid close contact with sick people
+- Get annual flu vaccine
+- Don't touch your face
+- Clean and disinfect surfaces
+
+Are you experiencing any breathing difficulties or high fever?`
+      },
+      type: 'symptom' as const,
+      followUp: "What symptoms are you experiencing and how long have you had them?"
+    },
+
+    // Skin problems
+    skin: {
+      keywords: ['rash', 'skin rash', 'hives', 'itching', 'skin irritation', 'allergic reaction', 'dermatitis', 'eczema', 'skin infection'],
+      response: (context: string) => {
+        return `Skin problems can range from mild irritation to serious conditions. Here's when to seek help:
+
+**When to go to the hospital immediately:**
+- **Rash with difficulty breathing or swallowing**
+- **Rash with fever and feeling very unwell**
+- **Rash that spreads quickly over large areas**
+- **Rash with signs of infection (warmth, pus, red streaks)**
+- **Rash with joint pain or swelling**
+- **Rash that looks like bruises or doesn't fade when pressed**
+
+**Common skin conditions:**
+- **Allergic reaction** - Red, itchy rash, often with hives
+- **Eczema** - Dry, itchy, red patches
+- **Contact dermatitis** - Red, itchy rash from irritants
+- **Fungal infection** - Red, scaly patches, often in folds
+- **Viral rash** - Often with fever, can be various patterns
+- **Heat rash** - Small red bumps, often in hot weather
+
+**When to see a doctor:**
+- Rash that doesn't improve with home care
+- Rash that spreads or gets worse
+- Rash with fever or other symptoms
+- Rash that's painful or interferes with daily life
+- Rash in sensitive areas (face, genitals)
+- Signs of infection
+
+**Home care for mild rashes:**
+- Keep skin clean and dry
+- Use gentle, fragrance-free products
+- Apply cool compresses
+- Use over-the-counter hydrocortisone cream
+- Avoid scratching
+- Wear loose, breathable clothing
+
+**Signs of serious allergic reaction:**
+- Difficulty breathing
+- Swelling of face, lips, or tongue
+- Dizziness or fainting
+- Rapid heartbeat
+- Nausea or vomiting
+
+Are you experiencing any breathing difficulties or signs of a serious allergic reaction?`
+      },
+      type: 'symptom' as const,
+      followUp: "What does the rash look like and are you experiencing any other symptoms?"
     },
 
     // General health and wellness
@@ -297,7 +517,7 @@ What type of headache are you experiencing? I can provide more specific guidance
 - **Avoid smoking**: Quit if you smoke, avoid secondhand smoke
 - **Limit alcohol**: Moderation is key (1 drink/day women, 2 men)
 - **Sun protection**: Use sunscreen, avoid peak sun hours
-- **Safety**: Wear seatbelts, helmets, practice safe sex
+- **Safety**: Wear seatbelts, helmets, practice safe habits
 
 **Warning Signs to Watch:**
 - Unexplained weight loss or gain
@@ -306,10 +526,119 @@ What type of headache are you experiencing? I can provide more specific guidance
 - Mood changes lasting more than 2 weeks
 - New or unusual symptoms
 
+**When to see a doctor:**
+- Any concerning symptoms that persist
+- Changes in your normal health patterns
+- Preventive care and regular check-ups
+- Questions about your health
+
 What specific aspect of health would you like to focus on? I can provide more detailed guidance on any topic.`
       },
       type: 'lifestyle' as const,
       followUp: "What health goals are you working towards? I can help create a personalized plan."
+    },
+
+    // Back pain
+    backPain: {
+      keywords: ['back pain', 'backache', 'lower back pain', 'upper back pain', 'spine pain', 'back injury'],
+      response: (context: string) => {
+        return `Back pain is very common and can range from mild to severe. Here's when to seek help:
+
+**When to go to the hospital immediately:**
+- **Severe pain after injury (fall, accident)**
+- **Pain with numbness or weakness in legs**
+- **Loss of bladder or bowel control**
+- **Severe pain that prevents movement**
+- **Pain with fever and weight loss**
+- **Pain that radiates down both legs**
+
+**Common causes of back pain:**
+- **Muscle strain** - Most common, from lifting or twisting
+- **Poor posture** - Sitting or standing incorrectly
+- **Herniated disc** - Disc pressing on nerve
+- **Arthritis** - Joint inflammation in spine
+- **Osteoporosis** - Weakened bones
+- **Stress** - Tension causing muscle tightness
+
+**When to see a doctor:**
+- Pain lasting more than a few weeks
+- Pain that gets worse
+- Pain with other symptoms
+- Numbness or tingling in legs
+- Difficulty walking or standing
+- Pain that interferes with sleep
+
+**Home care for mild back pain:**
+- Rest for 1-2 days (not longer)
+- Apply ice for first 48 hours, then heat
+- Gentle stretching and movement
+- Over-the-counter pain relievers
+- Maintain good posture
+- Sleep on firm mattress
+
+**Prevention:**
+- Regular exercise to strengthen core
+- Proper lifting techniques
+- Good posture when sitting/standing
+- Maintain healthy weight
+- Stretch regularly
+- Use ergonomic furniture
+
+Are you experiencing any numbness, weakness, or loss of bladder control?`
+      },
+      type: 'symptom' as const,
+      followUp: "How long have you had the back pain and did it start after an injury?"
+    },
+
+    // Joint pain and arthritis
+    jointPain: {
+      keywords: ['joint pain', 'arthritis', 'knee pain', 'hip pain', 'shoulder pain', 'elbow pain', 'wrist pain', 'ankle pain'],
+      response: (context: string) => {
+        return `Joint pain can affect any joint in your body. Here's when to seek help:
+
+**When to go to the hospital:**
+- **Severe joint pain with swelling and redness**
+- **Joint pain with fever and feeling unwell**
+- **Inability to move the joint**
+- **Joint deformity or severe swelling**
+- **Pain after serious injury**
+
+**Common causes of joint pain:**
+- **Osteoarthritis** - Wear and tear on joints
+- **Rheumatoid arthritis** - Autoimmune condition
+- **Gout** - Uric acid crystals in joints
+- **Bursitis** - Inflammation of fluid-filled sacs
+- **Tendonitis** - Inflammation of tendons
+- **Injury** - Sprains, strains, fractures
+
+**When to see a doctor:**
+- Joint pain lasting more than a few weeks
+- Pain that gets worse over time
+- Swelling, redness, or warmth in joint
+- Stiffness lasting more than 30 minutes
+- Pain that interferes with daily activities
+- Joint pain with other symptoms
+
+**Home care for mild joint pain:**
+- Rest the affected joint
+- Apply ice for 15-20 minutes
+- Use compression bandage
+- Elevate the joint
+- Over-the-counter pain relievers
+- Gentle range-of-motion exercises
+
+**Prevention:**
+- Maintain healthy weight
+- Regular low-impact exercise
+- Proper warm-up before activity
+- Use proper equipment and technique
+- Avoid repetitive stress on joints
+- Eat anti-inflammatory foods
+
+Are you experiencing any swelling, redness, or fever with the joint pain?`
+      },
+      type: 'symptom' as const,
+      followUp: "Which joint is affected and how long have you had the pain?"
     },
 
     // Technology and science
@@ -683,14 +1012,14 @@ What specific topic would you like to explore? I'm here to provide comprehensive
   };
 
   const quickActions = [
-    { text: "What is sex?", icon: Heart, category: "education" },
-    { text: "How do condoms work?", icon: Pill, category: "education" },
-    { text: "I have a headache", icon: Stethoscope, category: "general" },
-    { text: "Explain AI to me", icon: Zap, category: "technology" },
-    { text: "How does gravity work?", icon: Lightbulb, category: "science" },
+    { text: "I have a headache", icon: Stethoscope, category: "symptom" },
+    { text: "I have a fever", icon: Heart, category: "symptom" },
+    { text: "Chest pain", icon: AlertTriangle, category: "emergency" },
+    { text: "Stomach pain", icon: Stethoscope, category: "symptom" },
+    { text: "Back pain", icon: Stethoscope, category: "symptom" },
+    { text: "Joint pain", icon: Stethoscope, category: "symptom" },
     { text: "Health and wellness tips", icon: Heart, category: "lifestyle" },
-    { text: "Emergency help", icon: AlertTriangle, category: "emergency" },
-    { text: "Ask me anything", icon: Bot, category: "general" }
+    { text: "Emergency help", icon: AlertTriangle, category: "emergency" }
   ];
 
   return (
@@ -768,26 +1097,26 @@ What specific topic would you like to explore? I'm here to provide comprehensive
         {messages.length === 0 && (
           <div className={`text-center ${isMobile ? 'py-6' : 'py-8'}`}>
             <Bot className={`${isMobile ? 'w-12 h-12' : 'w-16 h-16'} text-muted-foreground mx-auto mb-4 opacity-50`} />
-            <h3 className={`${isMobile ? 'text-base' : 'text-lg'} font-semibold mb-2`}>Welcome to Your AI Assistant</h3>
+            <h3 className={`${isMobile ? 'text-base' : 'text-lg'} font-semibold mb-2`}>Welcome to Your Health Assistant</h3>
             <p className={`${isMobile ? 'text-sm' : 'text-base'} text-muted-foreground mb-4`}>
-              I'm here to help with any questions you have! I can discuss health, science, technology, relationships, and much more.
+              I'm here to help with your health questions and concerns! I can assess symptoms, provide health guidance, and help you decide when to seek medical care.
             </p>
             
             {!isMobile && (
               <div className="space-y-3">
                 <p className="text-sm text-muted-foreground text-center">Try asking me about:</p>
                 <div className="space-y-2">
-                  {/* Education Topics */}
+                  {/* Health Symptoms */}
                   <div>
-                    <p className="text-xs font-semibold text-purple-600 mb-1">📚 Education & Health</p>
+                    <p className="text-xs font-semibold text-red-600 mb-1">🏥 Health Symptoms</p>
                     <div className="flex flex-wrap gap-1">
-                      {quickActions.filter(a => a.category === 'education').map((action, index) => (
+                      {quickActions.filter(a => a.category === 'symptom').map((action, index) => (
                         <Button
                           key={index}
                           variant="outline"
                           size="sm"
                           onClick={() => setInputText(action.text)}
-                          className="text-xs border-purple-200 text-purple-700 hover:bg-purple-50"
+                          className="text-xs border-red-200 text-red-700 hover:bg-red-50"
                         >
                           <action.icon className="w-3 h-3 mr-1" />
                           {action.text}
@@ -796,30 +1125,11 @@ What specific topic would you like to explore? I'm here to provide comprehensive
                     </div>
                   </div>
                   
-                  {/* Science & Tech */}
+                  {/* Emergency & General */}
                   <div>
-                    <p className="text-xs font-semibold text-blue-600 mb-1">🔬 Science & Technology</p>
+                    <p className="text-xs font-semibold text-green-600 mb-1">🚨 Emergency & General</p>
                     <div className="flex flex-wrap gap-1">
-                      {quickActions.filter(a => a.category === 'science' || a.category === 'technology').map((action, index) => (
-                        <Button
-                          key={index}
-                          variant="outline"
-                          size="sm"
-                          onClick={() => setInputText(action.text)}
-                          className="text-xs border-blue-200 text-blue-700 hover:bg-blue-50"
-                        >
-                          <action.icon className="w-3 h-3 mr-1" />
-                          {action.text}
-                        </Button>
-                      ))}
-                    </div>
-                  </div>
-                  
-                  {/* General & Emergency */}
-                  <div>
-                    <p className="text-xs font-semibold text-green-600 mb-1">💬 General & Emergency</p>
-                    <div className="flex flex-wrap gap-1">
-                      {quickActions.filter(a => a.category === 'general' || a.category === 'emergency' || a.category === 'lifestyle').map((action, index) => (
+                      {quickActions.filter(a => a.category === 'emergency' || a.category === 'general' || a.category === 'lifestyle').map((action, index) => (
                         <Button
                           key={index}
                           variant="outline"

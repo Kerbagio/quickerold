@@ -9,9 +9,9 @@ interface LayoutProps {
 
 const Layout = ({ children, showHeader = true }: LayoutProps) => {
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen-dvh bg-background">
       {showHeader && <Header />}
-      <main className="pb-20">
+      <main className="pb-20 safe-area-bottom">
         {children}
       </main>
       <BottomNav />

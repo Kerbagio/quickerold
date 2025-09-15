@@ -15,27 +15,27 @@ const Footer = () => {
               Get to the right hospital, faster. Because in emergencies, minutes matter.
             </p>
             <div className="text-sm text-secondary-foreground/60">
-              © 2024 QuickER. All rights reserved.
+              © 2025 QuickER. All rights reserved.
             </div>
           </div>
           
           <div>
             <h3 className="font-semibold mb-4">Service</h3>
             <ul className="space-y-2 text-sm text-secondary-foreground/80">
-              <li><a href="#" className="hover:text-secondary-foreground transition-colors">Find Emergency Care</a></li>
-              <li><a href="#" className="hover:text-secondary-foreground transition-colors">Wait Times</a></li>
-              <li><a href="#" className="hover:text-secondary-foreground transition-colors">Specialized Care</a></li>
-              <li><a href="#" className="hover:text-secondary-foreground transition-colors">Emergency Contacts</a></li>
+              <li><a href="/home" className="hover:text-secondary-foreground transition-colors">Find Emergency Care</a></li>
+              <li><a href="/dashboard" className="hover:text-secondary-foreground transition-colors">Wait Times</a></li>
+              <li><a href="/options" className="hover:text-secondary-foreground transition-colors">Specialized Care</a></li>
+              <li><a href="/about" className="hover:text-secondary-foreground transition-colors">Emergency Contacts</a></li>
             </ul>
           </div>
           
           <div>
             <h3 className="font-semibold mb-4">Support</h3>
             <ul className="space-y-2 text-sm text-secondary-foreground/80">
-              <li><a href="#" className="hover:text-secondary-foreground transition-colors">Help Center</a></li>
-              <li><a href="#" className="hover:text-secondary-foreground transition-colors">Privacy Policy</a></li>
-              <li><a href="#" className="hover:text-secondary-foreground transition-colors">Terms of Service</a></li>
-              <li><a href="#" className="hover:text-secondary-foreground transition-colors">Contact Us</a></li>
+              <li><a href="mailto:support@quicker.app?subject=Help Center Request" className="hover:text-secondary-foreground transition-colors">Help Center</a></li>
+              <li><a href="/privacy-policy" className="hover:text-secondary-foreground transition-colors">Privacy Policy</a></li>
+              <li><a href="/terms-of-service" className="hover:text-secondary-foreground transition-colors">Terms of Service</a></li>
+              <li><a href="mailto:support@quicker.app?subject=Contact Support&body=Hello, I need help with QuickER. Please describe your issue below:" className="hover:text-secondary-foreground transition-colors">Contact Us</a></li>
             </ul>
           </div>
         </div>

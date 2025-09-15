@@ -3,9 +3,10 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Bot, User, Send, AlertTriangle, Heart, Stethoscope, Pill, Phone, Search, Lightbulb, BookOpen, Zap } from "lucide-react";
+import { Bot, User, Send, AlertTriangle, Heart, Stethoscope, Pill, Phone, Search, Lightbulb, BookOpen, Zap, Mic, MicOff, Volume2, VolumeX, MoreVertical, X } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useToast } from "@/hooks/use-toast";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 interface Message {
   id: string;
@@ -19,9 +20,16 @@ const HealthChatbot = () => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputText, setInputText] = useState('');
   const [isTyping, setIsTyping] = useState(false);
+  const [isListening, setIsListening] = useState(false);
+  const [isMuted, setIsMuted] = useState(false);
+  const [showQuickActions, setShowQuickActions] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const recognitionRef = useRef<any>(null);
+  const synthRef = useRef<SpeechSynthesis | null>(null);
   const { t, language } = useLanguage();
   const { toast } = useToast();
+  const isMobile = useIsMobile();
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -30,6 +38,55 @@ const HealthChatbot = () => {
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
+
+  // Mobile-specific effects
+  useEffect(() => {
+    // Initialize speech recognition for mobile
+    if (typeof window !== 'undefined' && 'webkitSpeechRecognition' in window) {
+      recognitionRef.current = new (window as any).webkitSpeechRecognition();
+      recognitionRef.current.continuous = false;
+      recognitionRef.current.interimResults = false;
+      recognitionRef.current.lang = language === 'ar' ? 'ar-SA' : language === 'fr' ? 'fr-FR' : 'en-US';
+      
+      recognitionRef.current.onresult = (event: any) => {
+        const transcript = event.results[0][0].transcript;
+        setInputText(transcript);
+        setIsListening(false);
+      };
+      
+      recognitionRef.current.onerror = () => {
+        setIsListening(false);
+        toast({
+          title: "Voice input error",
+          description: "Could not process voice input. Please try typing instead.",
+          variant: "destructive"
+        });
+      };
+    }
+
+    // Initialize speech synthesis
+    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+      synthRef.current = window.speechSynthesis;
+    }
+
+    // Auto-focus input on mobile when component mounts
+    if (isMobile && inputRef.current) {
+      setTimeout(() => inputRef.current?.focus(), 100);
+    }
+  }, [language, isMobile, toast]);
+
+  // Handle mobile keyboard events
+  useEffect(() => {
+    const handleResize = () => {
+      // Scroll to bottom when keyboard appears/disappears on mobile
+      if (isMobile) {
+        setTimeout(scrollToBottom, 100);
+      }
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, [isMobile]);
 
   // Comprehensive AI Knowledge Base - ChatGPT-like responses
   const aiKnowledge = {
@@ -508,6 +565,11 @@ What specific topic would you like to explore? I'm here to provide comprehensive
 
       setMessages(prev => [...prev, botMessage]);
       
+      // Speak the response on mobile if not muted
+      if (isMobile && !isMuted) {
+        speakText(botResponse);
+      }
+      
       // Add follow-up question if available
       if (followUp) {
         setTimeout(() => {
@@ -519,6 +581,11 @@ What specific topic would you like to explore? I'm here to provide comprehensive
             type: 'general'
           };
           setMessages(prev => [...prev, followUpMessage]);
+          
+          // Speak follow-up on mobile if not muted
+          if (isMobile && !isMuted) {
+            speakText(followUp);
+          }
         }, 800);
       }
       
@@ -530,6 +597,46 @@ What specific topic would you like to explore? I'm here to provide comprehensive
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       handleSendMessage();
+    }
+  };
+
+  // Mobile-specific functions
+  const startVoiceInput = () => {
+    if (recognitionRef.current && !isListening) {
+      setIsListening(true);
+      recognitionRef.current.start();
+    }
+  };
+
+  const stopVoiceInput = () => {
+    if (recognitionRef.current && isListening) {
+      recognitionRef.current.stop();
+      setIsListening(false);
+    }
+  };
+
+  const speakText = (text: string) => {
+    if (synthRef.current && !isMuted) {
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.lang = language === 'ar' ? 'ar-SA' : language === 'fr' ? 'fr-FR' : 'en-US';
+      utterance.rate = 0.9;
+      utterance.pitch = 1;
+      synthRef.current.speak(utterance);
+    }
+  };
+
+  const handleMobileInputFocus = () => {
+    if (isMobile) {
+      // Scroll to bottom when input is focused on mobile
+      setTimeout(scrollToBottom, 300);
+    }
+  };
+
+  const handleQuickActionClick = (actionText: string) => {
+    setInputText(actionText);
+    setShowQuickActions(false);
+    if (isMobile && inputRef.current) {
+      inputRef.current.focus();
     }
   };
 
@@ -587,107 +694,172 @@ What specific topic would you like to explore? I'm here to provide comprehensive
   ];
 
   return (
-    <div className="flex flex-col h-full">
-      {/* Header */}
-      <div className="p-4 border-b border-border bg-primary/5">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center">
-            <Bot className="w-6 h-6 text-primary" />
+    <div className={`flex flex-col h-full ${isMobile ? 'min-h-screen' : ''}`}>
+      {/* Header - Mobile Optimized */}
+      <div className={`${isMobile ? 'p-3' : 'p-4'} border-b border-border bg-primary/5 sticky top-0 z-10`}>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className={`${isMobile ? 'w-8 h-8' : 'w-10 h-10'} bg-primary/10 rounded-full flex items-center justify-center`}>
+              <Bot className={`${isMobile ? 'w-5 h-5' : 'w-6 h-6'} text-primary`} />
+            </div>
+            <div className="flex-1 min-w-0">
+              <h2 className={`${isMobile ? 'font-semibold text-base' : 'font-semibold text-lg'} truncate`}>AI Assistant</h2>
+              <p className={`${isMobile ? 'text-xs' : 'text-sm'} text-muted-foreground truncate`}>Ask me anything - I'm here to help!</p>
+            </div>
           </div>
-          <div>
-            <h2 className="font-semibold text-lg">AI Assistant</h2>
-            <p className="text-sm text-muted-foreground">Ask me anything - I'm here to help!</p>
-          </div>
+          
+          {/* Mobile Controls */}
+          {isMobile && (
+            <div className="flex items-center gap-2">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setIsMuted(!isMuted)}
+                className="w-8 h-8"
+              >
+                {isMuted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setShowQuickActions(!showQuickActions)}
+                className="w-8 h-8"
+              >
+                <MoreVertical className="w-4 h-4" />
+              </Button>
+            </div>
+          )}
         </div>
       </div>
 
-      {/* Messages */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+      {/* Mobile Quick Actions Overlay */}
+      {isMobile && showQuickActions && (
+        <div className="absolute top-16 right-3 z-20 bg-background border border-border rounded-lg shadow-lg p-3 w-64">
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="text-sm font-semibold">Quick Actions</h3>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setShowQuickActions(false)}
+              className="w-6 h-6"
+            >
+              <X className="w-4 h-4" />
+            </Button>
+          </div>
+          <div className="space-y-2">
+            {quickActions.slice(0, 6).map((action, index) => (
+              <Button
+                key={index}
+                variant="outline"
+                size="sm"
+                onClick={() => handleQuickActionClick(action.text)}
+                className="w-full justify-start text-xs h-8"
+              >
+                <action.icon className="w-3 h-3 mr-2" />
+                {action.text}
+              </Button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Messages - Mobile Optimized */}
+      <div className={`flex-1 overflow-y-auto ${isMobile ? 'p-3' : 'p-4'} space-y-3`}>
         {messages.length === 0 && (
-          <div className="text-center py-8">
-            <Bot className="w-16 h-16 text-muted-foreground mx-auto mb-4 opacity-50" />
-            <h3 className="text-lg font-semibold mb-2">Welcome to Your AI Assistant</h3>
-            <p className="text-muted-foreground mb-4">
+          <div className={`text-center ${isMobile ? 'py-6' : 'py-8'}`}>
+            <Bot className={`${isMobile ? 'w-12 h-12' : 'w-16 h-16'} text-muted-foreground mx-auto mb-4 opacity-50`} />
+            <h3 className={`${isMobile ? 'text-base' : 'text-lg'} font-semibold mb-2`}>Welcome to Your AI Assistant</h3>
+            <p className={`${isMobile ? 'text-sm' : 'text-base'} text-muted-foreground mb-4`}>
               I'm here to help with any questions you have! I can discuss health, science, technology, relationships, and much more.
             </p>
-            <div className="space-y-3">
-              <p className="text-sm text-muted-foreground text-center">Try asking me about:</p>
-              <div className="space-y-2">
-                {/* Education Topics */}
-                <div>
-                  <p className="text-xs font-semibold text-purple-600 mb-1">📚 Education & Health</p>
-                  <div className="flex flex-wrap gap-1">
-                    {quickActions.filter(a => a.category === 'education').map((action, index) => (
-                      <Button
-                        key={index}
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setInputText(action.text)}
-                        className="text-xs border-purple-200 text-purple-700 hover:bg-purple-50"
-                      >
-                        <action.icon className="w-3 h-3 mr-1" />
-                        {action.text}
-                      </Button>
-                    ))}
+            
+            {!isMobile && (
+              <div className="space-y-3">
+                <p className="text-sm text-muted-foreground text-center">Try asking me about:</p>
+                <div className="space-y-2">
+                  {/* Education Topics */}
+                  <div>
+                    <p className="text-xs font-semibold text-purple-600 mb-1">📚 Education & Health</p>
+                    <div className="flex flex-wrap gap-1">
+                      {quickActions.filter(a => a.category === 'education').map((action, index) => (
+                        <Button
+                          key={index}
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setInputText(action.text)}
+                          className="text-xs border-purple-200 text-purple-700 hover:bg-purple-50"
+                        >
+                          <action.icon className="w-3 h-3 mr-1" />
+                          {action.text}
+                        </Button>
+                      ))}
+                    </div>
                   </div>
-                </div>
-                
-                {/* Science & Tech */}
-                <div>
-                  <p className="text-xs font-semibold text-blue-600 mb-1">🔬 Science & Technology</p>
-                  <div className="flex flex-wrap gap-1">
-                    {quickActions.filter(a => a.category === 'science' || a.category === 'technology').map((action, index) => (
-                      <Button
-                        key={index}
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setInputText(action.text)}
-                        className="text-xs border-blue-200 text-blue-700 hover:bg-blue-50"
-                      >
-                        <action.icon className="w-3 h-3 mr-1" />
-                        {action.text}
-                      </Button>
-                    ))}
+                  
+                  {/* Science & Tech */}
+                  <div>
+                    <p className="text-xs font-semibold text-blue-600 mb-1">🔬 Science & Technology</p>
+                    <div className="flex flex-wrap gap-1">
+                      {quickActions.filter(a => a.category === 'science' || a.category === 'technology').map((action, index) => (
+                        <Button
+                          key={index}
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setInputText(action.text)}
+                          className="text-xs border-blue-200 text-blue-700 hover:bg-blue-50"
+                        >
+                          <action.icon className="w-3 h-3 mr-1" />
+                          {action.text}
+                        </Button>
+                      ))}
+                    </div>
                   </div>
-                </div>
-                
-                {/* General & Emergency */}
-                <div>
-                  <p className="text-xs font-semibold text-green-600 mb-1">💬 General & Emergency</p>
-                  <div className="flex flex-wrap gap-1">
-                    {quickActions.filter(a => a.category === 'general' || a.category === 'emergency' || a.category === 'lifestyle').map((action, index) => (
-                      <Button
-                        key={index}
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setInputText(action.text)}
-                        className="text-xs border-green-200 text-green-700 hover:bg-green-50"
-                      >
-                        <action.icon className="w-3 h-3 mr-1" />
-                        {action.text}
-                      </Button>
-                    ))}
+                  
+                  {/* General & Emergency */}
+                  <div>
+                    <p className="text-xs font-semibold text-green-600 mb-1">💬 General & Emergency</p>
+                    <div className="flex flex-wrap gap-1">
+                      {quickActions.filter(a => a.category === 'general' || a.category === 'emergency' || a.category === 'lifestyle').map((action, index) => (
+                        <Button
+                          key={index}
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setInputText(action.text)}
+                          className="text-xs border-green-200 text-green-700 hover:bg-green-50"
+                        >
+                          <action.icon className="w-3 h-3 mr-1" />
+                          {action.text}
+                        </Button>
+                      ))}
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
+            )}
+            
+            {isMobile && (
+              <div className="space-y-2">
+                <p className="text-xs text-muted-foreground">Tap the menu button above for quick actions</p>
+                <p className="text-xs text-muted-foreground">Or use voice input with the mic button below</p>
+              </div>
+            )}
           </div>
         )}
 
         {messages.map((message) => (
           <div
             key={message.id}
-            className={`flex gap-3 ${message.sender === 'user' ? 'justify-end' : 'justify-start'}`}
+            className={`flex gap-2 ${message.sender === 'user' ? 'justify-end' : 'justify-start'} ${isMobile ? 'mb-2' : ''}`}
           >
             {message.sender === 'bot' && (
-              <div className="w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center flex-shrink-0">
+              <div className={`${isMobile ? 'w-6 h-6' : 'w-8 h-8'} bg-primary/10 rounded-full flex items-center justify-center flex-shrink-0`}>
                 {getMessageIcon(message.type)}
               </div>
             )}
             
-            <div className={`max-w-[85%] ${message.sender === 'user' ? 'order-first' : ''}`}>
+            <div className={`${isMobile ? 'max-w-[80%]' : 'max-w-[85%]'} ${message.sender === 'user' ? 'order-first' : ''}`}>
               <div
-                className={`p-4 rounded-2xl ${
+                className={`${isMobile ? 'p-3' : 'p-4'} rounded-2xl ${
                   message.sender === 'user'
                     ? 'bg-primary text-primary-foreground ml-auto'
                     : 'bg-muted'
@@ -695,7 +867,7 @@ What specific topic would you like to explore? I'm here to provide comprehensive
               >
                 <div className="flex items-start gap-2">
                   <div className="flex-1">
-                    <div className="whitespace-pre-wrap text-sm leading-relaxed">{message.text}</div>
+                    <div className={`whitespace-pre-wrap ${isMobile ? 'text-sm' : 'text-sm'} leading-relaxed`}>{message.text}</div>
                     {message.type && message.sender === 'bot' && (
                       <div className="mt-2">
                         {getMessageBadge(message.type)}
@@ -704,25 +876,25 @@ What specific topic would you like to explore? I'm here to provide comprehensive
                   </div>
                 </div>
               </div>
-              <div className={`text-xs text-muted-foreground mt-1 ${message.sender === 'user' ? 'text-right' : 'text-left'}`}>
+              <div className={`${isMobile ? 'text-xs' : 'text-xs'} text-muted-foreground mt-1 ${message.sender === 'user' ? 'text-right' : 'text-left'}`}>
                 {message.timestamp.toLocaleTimeString()}
               </div>
             </div>
 
             {message.sender === 'user' && (
-              <div className="w-8 h-8 bg-blue-500/10 rounded-full flex items-center justify-center flex-shrink-0">
-                <User className="w-5 h-5 text-blue-500" />
+              <div className={`${isMobile ? 'w-6 h-6' : 'w-8 h-8'} bg-blue-500/10 rounded-full flex items-center justify-center flex-shrink-0`}>
+                <User className={`${isMobile ? 'w-4 h-4' : 'w-5 h-5'} text-blue-500`} />
               </div>
             )}
           </div>
         ))}
 
         {isTyping && (
-          <div className="flex gap-3 justify-start">
-            <div className="w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center">
-              <Bot className="w-5 h-5 text-primary" />
+          <div className={`flex ${isMobile ? 'gap-2' : 'gap-3'} justify-start`}>
+            <div className={`${isMobile ? 'w-6 h-6' : 'w-8 h-8'} bg-primary/10 rounded-full flex items-center justify-center`}>
+              <Bot className={`${isMobile ? 'w-4 h-4' : 'w-5 h-5'} text-primary`} />
             </div>
-            <div className="bg-muted p-4 rounded-2xl">
+            <div className={`bg-muted ${isMobile ? 'p-3' : 'p-4'} rounded-2xl`}>
               <div className="flex space-x-1">
                 <div className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce"></div>
                 <div className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
@@ -735,29 +907,61 @@ What specific topic would you like to explore? I'm here to provide comprehensive
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Input */}
-      <div className="p-4 border-t border-border">
+      {/* Input - Mobile Optimized */}
+      <div className={`${isMobile ? 'p-3' : 'p-4'} border-t border-border bg-background sticky bottom-0`}>
         <div className="flex gap-2">
           <Input
+            ref={inputRef}
             value={inputText}
             onChange={(e) => setInputText(e.target.value)}
             onKeyPress={handleKeyPress}
-            placeholder="Ask me anything - health, science, technology, relationships..."
+            onFocus={handleMobileInputFocus}
+            placeholder={isMobile ? "Ask me anything..." : "Ask me anything - health, science, technology, relationships..."}
             className="flex-1"
             disabled={isTyping}
           />
+          
+          {/* Voice Input Button - Mobile */}
+          {isMobile && (
+            <Button
+              onClick={isListening ? stopVoiceInput : startVoiceInput}
+              disabled={isTyping}
+              size="icon"
+              variant={isListening ? "destructive" : "outline"}
+              className="flex-shrink-0"
+            >
+              {isListening ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
+            </Button>
+          )}
+          
           <Button
             onClick={handleSendMessage}
             disabled={!inputText.trim() || isTyping}
             size="icon"
+            className="flex-shrink-0"
           >
             <Send className="w-4 h-4" />
           </Button>
         </div>
         
-        <div className="mt-2 text-xs text-muted-foreground text-center">
-          <Search className="w-3 h-3 inline mr-1" />
-          I can discuss any topic respectfully and informatively. Ask me anything!
+        <div className={`mt-2 ${isMobile ? 'text-xs' : 'text-xs'} text-muted-foreground text-center`}>
+          {isMobile ? (
+            <div className="flex items-center justify-center gap-4">
+              <span className="flex items-center">
+                <Mic className="w-3 h-3 inline mr-1" />
+                Voice input
+              </span>
+              <span className="flex items-center">
+                <Search className="w-3 h-3 inline mr-1" />
+                Ask anything
+              </span>
+            </div>
+          ) : (
+            <span className="flex items-center justify-center">
+              <Search className="w-3 h-3 inline mr-1" />
+              I can discuss any topic respectfully and informatively. Ask me anything!
+            </span>
+          )}
         </div>
       </div>
     </div>

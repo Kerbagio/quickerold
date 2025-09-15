@@ -863,11 +863,15 @@ What specific topic would you like to explore? I'm here to provide comprehensive
   };
 
   const handleSendMessage = async () => {
-    if (!inputText.trim()) return;
+    // Input validation and sanitization
+    if (!inputText.trim() || inputText.length > 1000) return;
+
+    // Sanitize input to prevent basic XSS attempts
+    const sanitizedText = inputText.trim().replace(/[<>]/g, '');
 
     const userMessage: Message = {
       id: Date.now().toString(),
-      text: inputText,
+      text: sanitizedText,
       sender: 'user',
       timestamp: new Date()
     };
@@ -880,9 +884,9 @@ What specific topic would you like to explore? I'm here to provide comprehensive
     const thinkingTime = 600 + Math.random() * 800; // 0.6-1.4 seconds
     
     setTimeout(() => {
-      const botResponse = getBotResponse(inputText);
-      const messageType = getMessageType(inputText);
-      const followUp = getFollowUpQuestion(inputText);
+      const botResponse = getBotResponse(sanitizedText);
+      const messageType = getMessageType(sanitizedText);
+      const followUp = getFollowUpQuestion(sanitizedText);
       
       const botMessage: Message = {
         id: (Date.now() + 1).toString(),

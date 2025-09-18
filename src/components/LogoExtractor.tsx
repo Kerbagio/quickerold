@@ -98,7 +98,7 @@ const LogoExtractor = () => {
     });
   };
 
-  const generatePng = async (type: 'logo' | 'logo-2x' | 'logo-3x' | 'icon' | 'favicon') => {
+  const generatePng = async (type: 'logo' | 'logo-2x' | 'logo-3x' | 'logo-4x' | 'logo-5x' | 'icon' | 'favicon') => {
     setIsGenerating(true);
     
     try {
@@ -205,6 +205,66 @@ const LogoExtractor = () => {
           svgElement.setAttribute('viewBox', '0 0 180 40');
           width = 540; height = 120; filename = 'quicker-logo-3x.png';
           break;
+        case 'logo-4x':
+          svgElement = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+          svgElement.innerHTML = `<defs>
+            <linearGradient id="pinGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+              <stop offset="0%" style="stop-color:#EF4444;stop-opacity:1" />
+              <stop offset="100%" style="stop-color:#DC2626;stop-opacity:1" />
+            </linearGradient>
+            <filter id="shadow" x="-50%" y="-50%" width="200%" height="200%">
+              <feDropShadow dx="0" dy="2" stdDeviation="2" flood-color="#00000020"/>
+            </filter>
+          </defs>
+          <g filter="url(#shadow)">
+            <path d="M20 8C20 12.4183 16.4183 16 12 16C7.58172 16 4 12.4183 4 8C4 3.58172 7.58172 0 12 0C16.4183 0 20 3.58172 20 8Z" fill="url(#pinGradient)"/>
+            <path d="M12 16L8 24H16L12 16Z" fill="url(#pinGradient)"/>
+            <rect x="10.5" y="4" width="3" height="8" rx="0.5" fill="white"/>
+            <rect x="7" y="6.5" width="10" height="3" rx="0.5" fill="white"/>
+          </g>
+          <g transform="translate(36, 4)">
+            <text x="0" y="16" font-family="Poppins, system-ui, sans-serif" font-size="20" font-weight="700" fill="#111827" letter-spacing="-0.02em">Quick</text>
+            <text x="60" y="16" font-family="Poppins, system-ui, sans-serif" font-size="20" font-weight="700" fill="#DC2626" letter-spacing="-0.02em">ER</text>
+            <text x="0" y="30" font-family="Inter, system-ui, sans-serif" font-size="10" font-weight="400" fill="#6B7280" letter-spacing="0.02em">Get to the right hospital, faster.</text>
+          </g>
+          <g opacity="0.4">
+            <line x1="24" y1="6" x2="30" y2="6" stroke="#DC2626" stroke-width="1" stroke-linecap="round"/>
+            <line x1="26" y1="10" x2="32" y2="10" stroke="#DC2626" stroke-width="1" stroke-linecap="round"/>
+            <line x1="24" y1="14" x2="28" y2="14" stroke="#DC2626" stroke-width="1" stroke-linecap="round"/>
+          </g>`;
+          svgElement.setAttribute('viewBox', '0 0 180 40');
+          width = 720; height = 160; filename = 'quicker-logo-4x.png';
+          break;
+        case 'logo-5x':
+          svgElement = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+          svgElement.innerHTML = `<defs>
+            <linearGradient id="pinGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+              <stop offset="0%" style="stop-color:#EF4444;stop-opacity:1" />
+              <stop offset="100%" style="stop-color:#DC2626;stop-opacity:1" />
+            </linearGradient>
+            <filter id="shadow" x="-50%" y="-50%" width="200%" height="200%">
+              <feDropShadow dx="0" dy="2" stdDeviation="2" flood-color="#00000020"/>
+            </filter>
+          </defs>
+          <g filter="url(#shadow)">
+            <path d="M20 8C20 12.4183 16.4183 16 12 16C7.58172 16 4 12.4183 4 8C4 3.58172 7.58172 0 12 0C16.4183 0 20 3.58172 20 8Z" fill="url(#pinGradient)"/>
+            <path d="M12 16L8 24H16L12 16Z" fill="url(#pinGradient)"/>
+            <rect x="10.5" y="4" width="3" height="8" rx="0.5" fill="white"/>
+            <rect x="7" y="6.5" width="10" height="3" rx="0.5" fill="white"/>
+          </g>
+          <g transform="translate(36, 4)">
+            <text x="0" y="16" font-family="Poppins, system-ui, sans-serif" font-size="20" font-weight="700" fill="#111827" letter-spacing="-0.02em">Quick</text>
+            <text x="60" y="16" font-family="Poppins, system-ui, sans-serif" font-size="20" font-weight="700" fill="#DC2626" letter-spacing="-0.02em">ER</text>
+            <text x="0" y="30" font-family="Inter, system-ui, sans-serif" font-size="10" font-weight="400" fill="#6B7280" letter-spacing="0.02em">Get to the right hospital, faster.</text>
+          </g>
+          <g opacity="0.4">
+            <line x1="24" y1="6" x2="30" y2="6" stroke="#DC2626" stroke-width="1" stroke-linecap="round"/>
+            <line x1="26" y1="10" x2="32" y2="10" stroke="#DC2626" stroke-width="1" stroke-linecap="round"/>
+            <line x1="24" y1="14" x2="28" y2="14" stroke="#DC2626" stroke-width="1" stroke-linecap="round"/>
+          </g>`;
+          svgElement.setAttribute('viewBox', '0 0 180 40');
+          width = 900; height = 200; filename = 'quicker-logo-5x.png';
+          break;
         case 'icon':
           svgElement = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
           svgElement.innerHTML = `<defs>
@@ -298,6 +358,24 @@ const LogoExtractor = () => {
               >
                 <Download className="h-4 w-4 mr-2" />
                 3x Resolution (540×120px)
+              </Button>
+              <Button 
+                onClick={() => generatePng('logo-4x')} 
+                disabled={isGenerating}
+                className="w-full"
+                variant="outline"
+              >
+                <Download className="h-4 w-4 mr-2" />
+                4x Resolution (720×160px)
+              </Button>
+              <Button 
+                onClick={() => generatePng('logo-5x')} 
+                disabled={isGenerating}
+                className="w-full"
+                variant="outline"
+              >
+                <Download className="h-4 w-4 mr-2" />
+                5x Resolution (900×200px)
               </Button>
             </div>
           </CardContent>

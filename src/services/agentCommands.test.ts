@@ -13,13 +13,36 @@ const decision: DecisionRecord = {
 };
 
 describe("planAgentCommand", () => {
-  it("turns an explicit specialty request into verified navigation actions", () => {
+  it("turns an explicit specialty request into an executable GPS search", () => {
     const plan = planAgentCommand("Find the fastest pediatric hospital", decision);
 
     expect(plan.intent).toBe("find");
     expect(plan.specialty).toBe("pediatric");
-    expect(plan.actions[0].href).toBe("/home?emergencyType=pediatric");
+    expect(plan.searchLocation).toBe("gps");
+    expect(plan.actions).toEqual([]);
+    expect(plan.reply).toContain("return the best routing option here");
     expect(plan.shouldUseLocalModel).toBe(false);
+  });
+
+  it("recognizes ER searches and an explicitly labelled Beirut demo point", () => {
+    const plan = planAgentCommand(
+      "Find ER hospitals using the Beirut demo",
+      decision,
+    );
+
+    expect(plan.intent).toBe("find");
+    expect(plan.specialty).toBeNull();
+    expect(plan.searchLocation).toBe("beirut-demo");
+  });
+
+  it("executes a new search when availability is part of a find request", () => {
+    const plan = planAgentCommand(
+      "Find an available ER hospital with the fastest ETA",
+      decision,
+    );
+
+    expect(plan.intent).toBe("find");
+    expect(plan.searchLocation).toBe("gps");
   });
 
   it("keeps symptom and treatment questions behind the medical boundary", () => {

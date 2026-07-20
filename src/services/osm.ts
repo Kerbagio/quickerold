@@ -82,5 +82,5 @@ export async function fetchHospitalsFromOSM(
     }
   }
 
-  return [];
+  throw new Error("OpenStreetMap Overpass providers are unavailable");
 }

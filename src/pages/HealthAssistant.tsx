@@ -15,8 +15,11 @@ import {
   CircleAlert,
   Clock3,
   Database,
+  ExternalLink,
   LockKeyhole,
+  MapPin,
   MapPinned,
+  Navigation,
   RotateCcw,
   Send,
   ShieldCheck,
@@ -29,10 +32,14 @@ import { Card } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import Layout from "@/components/Layout";
 import { useLanguage } from "@/contexts/LanguageContext";
-import { getDecisionHistory } from "@/services/analytics";
+import {
+  getDecisionHistory,
+  type DecisionRecord,
+} from "@/services/analytics";
 import {
   planAgentCommand,
   type AgentAction,
+  type AgentSearchLocation,
   type AgentTraceItem,
 } from "@/services/agentCommands";
 import {
@@ -44,7 +51,20 @@ import { availabilityLabel } from "@/services/availability";
 import {
   emergencyTypeLabel,
   normalizeEmergencyType,
+  type EmergencyType,
 } from "@/services/emergency";
+import {
+  hospitalSearchErrorMessage,
+  HospitalSearchError,
+  searchHospitals,
+  type HospitalSearchResult,
+} from "@/services/hospitalSearch";
+import type { Coordinate, EtaSource } from "@/services/routing";
+
+interface AgentSearchResult {
+  data: HospitalSearchResult;
+  locationLabel: "GPS location" | "Beirut demo point";
+}
 
 interface AgentMessage {
   id: string;
@@ -54,25 +74,60 @@ interface AgentMessage {
   mode?: AgentExplanationMode;
   model?: string;
   actions?: AgentAction[];
+  searchResult?: AgentSearchResult;
+  demoFallback?: EmergencyType;
 }
 
 const suggestions = [
+  "Find the fastest ER hospital",
+  "Find ER hospitals using the Beirut demo",
   "Find the fastest pediatric hospital",
   "Why was this hospital recommended?",
-  "What ETA source did you use?",
-  "Open the 10-minute accessibility map",
 ];
 
 const initialMessage: AgentMessage = {
   id: "welcome",
   role: "agent",
-  text: "Ask me to prepare a hospital search, open an accessibility map, or explain the latest routing decision, ETA source, availability rule, or privacy boundary.",
+  text: "Tell me what hospital category to find. I can request your location, search nearby facilities, calculate ETAs, and return the best routing option directly here.",
   sourceLabel: "Agent guide",
 };
 
+const BEIRUT_DEMO_LOCATION: Coordinate = { lat: 33.8938, lng: 35.5018 };
+
+const sourceLabels: Record<EtaSource, string> = {
+  "live-traffic": "Live traffic",
+  "road-network": "Road-network ETA",
+  "distance-estimate": "Distance estimate",
+};
+
+function requestBrowserLocation(): Promise<Coordinate> {
+  if (!navigator.geolocation) {
+    return Promise.reject(new Error("gps-unavailable"));
+  }
+
+  return new Promise((resolve, reject) => {
+    navigator.geolocation.getCurrentPosition(
+      (position) =>
+        resolve({
+          lat: position.coords.latitude,
+          lng: position.coords.longitude,
+        }),
+      () => reject(new Error("gps-denied")),
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 30000 },
+    );
+  });
+}
+
+function directionsUrl(result: AgentSearchResult): string {
+  const { bestOption } = result.data;
+  return `https://www.google.com/maps/dir/?api=1&destination=${bestOption.lat},${bestOption.lng}&travelmode=driving`;
+}
+
 const HealthAssistant = () => {
   const { language } = useLanguage();
-  const latestDecision = getDecisionHistory()[0];
+  const [sessionDecision, setSessionDecision] =
+    useState<DecisionRecord | null>(null);
+  const latestDecision = sessionDecision ?? getDecisionHistory()[0];
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState<AgentMessage[]>([initialMessage]);
   const [trace, setTrace] = useState<AgentTraceItem[]>([]);
@@ -90,6 +145,190 @@ const HealthAssistant = () => {
     setTrace([]);
     setInput("");
     setProgress(null);
+  };
+
+  const updateMessage = (
+    messageId: string,
+    update: Partial<AgentMessage>,
+  ) => {
+    setMessages((current) =>
+      current.map((message) =>
+        message.id === messageId ? { ...message, ...update } : message,
+      ),
+    );
+  };
+
+  const updateTraceStep = (step: AgentTraceItem) => {
+    setTrace((current) => {
+      const existingIndex = current.findIndex((item) => item.id === step.id);
+      if (existingIndex === -1) return [...current, step];
+      return current.map((item, index) =>
+        index === existingIndex ? step : item,
+      );
+    });
+  };
+
+  const executeHospitalSearch = async (
+    responseId: string,
+    emergencyType: EmergencyType,
+    searchLocation: AgentSearchLocation,
+  ) => {
+    setIsThinking(true);
+    setProgress({
+      label:
+        searchLocation === "beirut-demo"
+          ? "Starting from the labelled Beirut demo point…"
+          : "Requesting your browser location…",
+    });
+    updateMessage(responseId, {
+      text:
+        searchLocation === "beirut-demo"
+          ? "Using the clearly labelled Beirut demo point. I’m searching hospitals and calculating ETAs now…"
+          : "I’m requesting your location, then I’ll search hospitals and rank their ETAs here…",
+      sourceLabel: "Location tool",
+      actions: [],
+      demoFallback: undefined,
+    });
+    updateTraceStep({
+      id: "location",
+      label: "Location tool",
+      detail:
+        searchLocation === "beirut-demo"
+          ? "Using the presentation-only Beirut coordinate; it is not represented as the user's GPS location."
+          : "Waiting for browser GPS permission; precise coordinates are not stored in decision history.",
+      status: "running",
+    });
+
+    try {
+      const origin =
+        searchLocation === "beirut-demo"
+          ? BEIRUT_DEMO_LOCATION
+          : await requestBrowserLocation();
+      const locationLabel =
+        searchLocation === "beirut-demo"
+          ? "Beirut demo point"
+          : "GPS location";
+
+      updateTraceStep({
+        id: "location",
+        label: "Location tool",
+        detail:
+          searchLocation === "beirut-demo"
+            ? "Loaded the clearly labelled Beirut presentation point."
+            : "Received a temporary GPS coordinate for this search only.",
+        status: "complete",
+      });
+      setProgress({ label: "Searching OpenStreetMap hospital data…" });
+      updateTraceStep({
+        id: "discovery",
+        label: "Hospital discovery tool",
+        detail: `Searching OpenStreetMap within 8 km for ${emergencyTypeLabel(emergencyType)} options.`,
+        status: "running",
+      });
+
+      let result: HospitalSearchResult | null = null;
+      let lastSearchError: unknown;
+      for (const radius of [8, 15, 25]) {
+        setProgress({
+          label: `Searching hospitals and routes within ${radius} km…`,
+        });
+        updateTraceStep({
+          id: "discovery",
+          label: "Hospital discovery tool",
+          detail: `Searching OpenStreetMap within ${radius} km for ${emergencyTypeLabel(emergencyType)} options.`,
+          status: "running",
+        });
+        try {
+          result = await searchHospitals(origin.lat, origin.lng, {
+            radius,
+            emergencyType,
+          });
+          break;
+        } catch (error) {
+          lastSearchError = error;
+          if (
+            !(error instanceof HospitalSearchError) ||
+            error.code !== "no-hospitals" ||
+            radius === 25
+          ) {
+            throw error;
+          }
+        }
+      }
+      if (!result) throw lastSearchError;
+
+      const { bestOption } = result;
+      const searchResult: AgentSearchResult = { data: result, locationLabel };
+      setSessionDecision({
+        timestamp: new Date().toISOString(),
+        emergencyType: result.emergencyType,
+        candidateCount: result.hospitals.length,
+        recommendedHospital: bestOption.name,
+        etaMinutes: bestOption.etaMinutes,
+        etaSource: bestOption.etaSource,
+        availability: bestOption.availability.status,
+      });
+      const source = result.routingStatus.source
+        ? sourceLabels[result.routingStatus.source]
+        : "Routing result";
+      const fallbackNotice = result.specialtyFallback
+        ? ` No exact ${emergencyTypeLabel(emergencyType)} specialty tag was found, so these are general hospitals that must be confirmed with the facility.`
+        : "";
+
+      updateMessage(responseId, {
+        text: `Search complete. Best routing option: ${bestOption.name} — ETA ${bestOption.eta}. I compared ${result.hospitals.length} eligible hospitals from the ${locationLabel.toLowerCase()}.${fallbackNotice}`,
+        sourceLabel: source,
+        mode: "deterministic",
+        searchResult,
+        demoFallback: undefined,
+        actions: [],
+      });
+      updateTraceStep({
+        id: "discovery",
+        label: "Hospital discovery tool",
+        detail: `Retrieved and filtered ${result.hospitals.length} routeable hospital candidates within ${result.radiusKm} km.`,
+        status: "complete",
+      });
+      updateTraceStep({
+        id: "routing",
+        label: "ETA ranking tool",
+        detail: `${source} ranked ${bestOption.name} at ${bestOption.eta}; availability tier was applied before ETA.`,
+        status:
+          bestOption.etaSource === "distance-estimate" ? "warning" : "complete",
+      });
+      updateTraceStep({
+        id: "verification",
+        label: "Result verifier",
+        detail:
+          "Confirmed that the displayed hospital, ETA, source, availability label, and alternatives came from the completed tool result.",
+        status: "complete",
+      });
+    } catch (error) {
+      const locationFailure =
+        error instanceof Error &&
+        (error.message === "gps-denied" || error.message === "gps-unavailable");
+      const message = locationFailure
+        ? "I couldn’t access your GPS location, so I did not pretend to run a local search. Enable browser location and try again, or use the clearly labelled Beirut demo point for the presentation."
+        : hospitalSearchErrorMessage(error);
+
+      updateMessage(responseId, {
+        text: message,
+        sourceLabel: locationFailure ? "Location permission required" : "Search unavailable",
+        mode: "deterministic",
+        searchResult: undefined,
+        demoFallback: locationFailure ? emergencyType : undefined,
+        actions: [],
+      });
+      updateTraceStep({
+        id: locationFailure ? "location" : "discovery",
+        label: locationFailure ? "Location tool" : "Hospital search tool",
+        detail: message,
+        status: "warning",
+      });
+    } finally {
+      setProgress(null);
+      setIsThinking(false);
+    }
   };
 
   const submitPrompt = async (rawPrompt = input) => {
@@ -116,6 +355,15 @@ const HealthAssistant = () => {
     setInput("");
     setMessages((current) => [...current, userMessage, immediateReply]);
     setTrace(plan.trace);
+
+    if (plan.intent === "find") {
+      await executeHospitalSearch(
+        responseId,
+        plan.specialty ?? "general",
+        plan.searchLocation,
+      );
+      return;
+    }
 
     if (!plan.shouldUseLocalModel || !latestDecision) {
       setTrace((current) => [
@@ -214,13 +462,14 @@ const HealthAssistant = () => {
                   Agent ready
                 </Badge>
                 <Badge variant="outline">$0 • no API key</Badge>
+                <Badge variant="outline">Executes routing tools</Badge>
                 <Badge variant="outline">Private on-device AI</Badge>
               </div>
               <h1 className="text-3xl font-bold sm:text-4xl">
                 Ask QuickER Dispatch
               </h1>
               <p className="mt-3 max-w-2xl text-lg text-muted-foreground">
-                Type a routing request in plain language. QuickER plans a safe map action or explains the latest hospital decision with visible sources and guardrails.
+                Type a hospital request in plain language. QuickER can request your location, search real public hospital data, calculate ETAs, and return the ranked result directly in this conversation.
               </p>
             </div>
             <div className="hidden h-24 w-24 items-center justify-center rounded-3xl bg-primary/10 lg:flex">
@@ -239,7 +488,7 @@ const HealthAssistant = () => {
                 <div>
                   <h2 className="font-semibold">Dispatch conversation</h2>
                   <p className="text-xs text-muted-foreground">
-                    Immediate rules response • optional local AI refinement
+                    Executes search tools • returns ranked results in chat
                   </p>
                 </div>
               </div>
@@ -293,6 +542,153 @@ const HealthAssistant = () => {
                             <Badge variant="outline">{message.sourceLabel}</Badge>
                           ) : null}
                         </div>
+                        {message.searchResult ? (
+                          <div className="mt-4 overflow-hidden rounded-xl border bg-muted/20">
+                            <div className="border-b bg-primary/5 p-4">
+                              <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+                                <Badge className="bg-success text-success-foreground">
+                                  Best routing option
+                                </Badge>
+                                <Badge variant="outline">
+                                  <MapPin className="mr-1 h-3 w-3" />
+                                  {message.searchResult.locationLabel}
+                                </Badge>
+                              </div>
+                              <h3 className="text-lg font-semibold">
+                                {message.searchResult.data.bestOption.name}
+                              </h3>
+                              <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
+                                <div className="rounded-lg bg-background p-2.5">
+                                  <p className="text-[11px] text-muted-foreground">ETA</p>
+                                  <p className="font-bold text-primary">
+                                    {message.searchResult.data.bestOption.eta}
+                                  </p>
+                                </div>
+                                <div className="rounded-lg bg-background p-2.5">
+                                  <p className="text-[11px] text-muted-foreground">Distance</p>
+                                  <p className="font-semibold">
+                                    {message.searchResult.data.bestOption.distance}
+                                  </p>
+                                </div>
+                                <div className="rounded-lg bg-background p-2.5">
+                                  <p className="text-[11px] text-muted-foreground">Source</p>
+                                  <p className="font-semibold">
+                                    {sourceLabels[
+                                      message.searchResult.data.bestOption.etaSource
+                                    ]}
+                                  </p>
+                                </div>
+                                <div className="rounded-lg bg-background p-2.5">
+                                  <p className="text-[11px] text-muted-foreground">Availability</p>
+                                  <p className="font-semibold">
+                                    {availabilityLabel(
+                                      message.searchResult.data.bestOption.availability
+                                        .status,
+                                    )}
+                                  </p>
+                                </div>
+                              </div>
+                              <div className="mt-3 flex flex-wrap gap-2">
+                                <Badge variant="secondary">
+                                  {message.searchResult.data.bestOption.specialty}
+                                </Badge>
+                                <Badge variant="outline">
+                                  {message.searchResult.data.hospitals.length} compared
+                                </Badge>
+                              </div>
+                            </div>
+
+                            {message.searchResult.data.hospitals.length > 1 ? (
+                              <div className="p-4">
+                                <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                                  Fast alternatives
+                                </p>
+                                <div className="space-y-2">
+                                  {message.searchResult.data.hospitals
+                                    .slice(1, 4)
+                                    .map((hospital, index) => (
+                                      <div
+                                        key={hospital.id}
+                                        className="flex items-center justify-between gap-3 rounded-lg bg-background p-2.5"
+                                      >
+                                        <div className="min-w-0">
+                                          <p className="truncate font-medium">
+                                            #{index + 2} {hospital.name}
+                                          </p>
+                                          <p className="text-xs text-muted-foreground">
+                                            {hospital.distance} • {availabilityLabel(
+                                              hospital.availability.status,
+                                            )}
+                                          </p>
+                                        </div>
+                                        <span className="shrink-0 font-bold text-primary">
+                                          {hospital.eta}
+                                        </span>
+                                      </div>
+                                    ))}
+                                </div>
+                              </div>
+                            ) : null}
+
+                            <div className="grid gap-2 border-t p-4 sm:grid-cols-3">
+                              <Button size="sm" asChild>
+                                <a
+                                  href={directionsUrl(message.searchResult)}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                >
+                                  <Navigation className="mr-2 h-4 w-4" />
+                                  Open directions
+                                  <ExternalLink className="ml-2 h-3.5 w-3.5" />
+                                </a>
+                              </Button>
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="outline"
+                                disabled={isThinking}
+                                onClick={() =>
+                                  void submitPrompt(
+                                    "Why was this hospital recommended?",
+                                  )
+                                }
+                              >
+                                <Sparkles className="mr-2 h-4 w-4" />
+                                Explain choice
+                              </Button>
+                              <Button size="sm" variant="outline" asChild>
+                                <Link
+                                  to={`/options?emergencyType=${message.searchResult.data.emergencyType}`}
+                                >
+                                  <MapPinned className="mr-2 h-4 w-4" />
+                                  Access map
+                                </Link>
+                              </Button>
+                            </div>
+                            <p className="border-t px-4 py-3 text-[11px] leading-relaxed text-muted-foreground">
+                              Ranked by available status first, then ETA. Availability is simulated or unknown—not live hospital capacity. Confirm services with the facility.
+                            </p>
+                          </div>
+                        ) : null}
+                        {message.demoFallback ? (
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            className="mt-4"
+                            disabled={isThinking}
+                            onClick={() =>
+                              void executeHospitalSearch(
+                                message.id,
+                                message.demoFallback ?? "general",
+                                "beirut-demo",
+                              )
+                            }
+                          >
+                            <MapPin className="mr-2 h-4 w-4" />
+                            Use Beirut demo point
+                          </Button>
+                        ) : null}
                         {message.actions?.length ? (
                           <div className="mt-4 grid gap-2 sm:grid-cols-2">
                             {message.actions.map((action) => (
@@ -365,7 +761,7 @@ const HealthAssistant = () => {
                   value={input}
                   onChange={(event) => setInput(event.target.value.slice(0, 300))}
                   onKeyDown={handleKeyDown}
-                  placeholder='Try “Find the fastest cardiac hospital” or “Why this option?”'
+                  placeholder='Try “Find an available ER hospital with the fastest ETA”'
                   className="min-h-[92px] resize-none rounded-2xl pb-10 pr-14"
                   disabled={isThinking}
                   aria-label="Ask the QuickER dispatch agent"

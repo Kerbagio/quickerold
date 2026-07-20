@@ -5,7 +5,7 @@ Use this as the recording plan for a two-minute landscape demo. The official [su
 ## Recording preflight
 
 - Record the deployed GitHub Pages build in a 16:9 browser window.
-- Run the full sequence once before recording. On the Agent page, click **Run free on-device AI** so the roughly 100 MB model is already cached.
+- Run the full sequence once before recording. On the Agent page, complete a demo search and select **Explain choice** so the roughly 100 MB model is already cached.
 - Confirm the AI result badge says **On-device AI**. If it says **Deterministic fallback**, refresh and retry before recording; never call a fallback result AI-generated.
 - Use the labelled Beirut demo point so the route is reproducible and no personal location appears in the video.
 - Keep the ETA source badge visible. On the static $0 build, describe it as road-network ETA—not live traffic.
@@ -47,9 +47,9 @@ Use this as the recording plan for a two-minute landscape demo. The official [su
 
 ### 1:30–1:50 — Typed agent visibly working
 
-**Do:** Open **Agent**, type **Why was this hospital recommended?**, and press Enter. Keep the immediate verified answer, Agent Activity trace, model progress, and final **On-device AI** badge visible.
+**Do:** Open **Agent**, type **Find ER hospitals using the Beirut demo**, and press Enter. Show the agent returning the best routing option, ETA, alternatives, and completed tool trace directly in chat. Then select **Explain choice** and keep the final **On-device AI** badge visible.
 
-**Say:** “The typed dispatch agent classifies my routing request, loads only the local decision summary, and returns a verified answer immediately. An open FLAN-T5 model then refines eligible explanations inside the browser without a key or paid API. The visible trace shows its actions and validation, and QuickER rejects output that drops required facts or adds unsupported medical claims.”
+**Say:** “This is an action-taking dispatch agent, not just a chatbot. From one typed request it selects the demo location, searches public hospital data, calculates road ETAs, ranks availability and travel time, and returns the best result plus alternatives inside the conversation. An open FLAN-T5 model can then explain the structured decision inside the browser without a key or paid API. QuickER validates that explanation and blocks unsupported medical claims.”
 
 ### 1:50–2:00 — Honest $0 close
 
@@ -63,7 +63,7 @@ Use this as the recording plan for a two-minute landscape demo. The official [su
 2. **Route:** highlighted road route with the alternatives list visible.
 3. **Dashboard:** rerouting scenario after the first facility becomes diverting.
 4. **Emergency Options:** specialty filter and 5/10/15-minute accessibility layers, including the estimate label.
-5. **Agent:** typed request, completed explanation, activity trace, and **On-device AI** badge visible.
+5. **Agent:** typed search request, ranked hospital result with alternatives, completed tool trace, explanation, and **On-device AI** badge visible.
 
 Do not submit AI-generated interface images, stock images, design concepts, or screenshots of code without the working app. Crop only for privacy or empty browser chrome; do not edit the interface result.
 

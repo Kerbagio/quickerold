@@ -15,6 +15,8 @@ export type AgentIntent =
   | "medical-boundary"
   | "help";
 
+export type AgentSearchLocation = "gps" | "beirut-demo";
+
 export interface AgentAction {
   label: string;
   description: string;
@@ -31,6 +33,7 @@ export interface AgentTraceItem {
 export interface AgentCommandPlan {
   intent: AgentIntent;
   specialty: EmergencyType | null;
+  searchLocation: AgentSearchLocation;
   reply: string;
   actions: AgentAction[];
   shouldUseLocalModel: boolean;
@@ -57,20 +60,21 @@ function detectIntent(query: string, specialty: EmergencyType | null): AgentInte
   if (/\bmap\b|\bheatmap\b|\bisochrone\b|\breachable\b/i.test(query)) {
     return "map";
   }
-  if (/\bavailab\w*\b|\baccepting\b|\bdiverting\b|\bcapacity\b|\bbeds?\b/i.test(query)) {
-    return "availability";
-  }
   if (/\bwhy\b|\bexplain\b|\bchosen\b|\brecommend\w*\b/i.test(query)) {
     return "explain";
   }
-  if (/\bsource\b|\beta\b|\btraffic\b|\bdistance\b|\btravel time\b/i.test(query)) {
-    return "source";
-  }
+  if (/\bsource\b/i.test(query)) return "source";
   if (
     specialty ||
     /\bfind\b|\bfastest\b|\bnearby\b|\bhospitals?\b|\broute\b|\bsearch\b/i.test(query)
   ) {
     return "find";
+  }
+  if (/\bavailab\w*\b|\baccepting\b|\bdiverting\b|\bcapacity\b|\bbeds?\b/i.test(query)) {
+    return "availability";
+  }
+  if (/\beta\b|\btraffic\b|\bdistance\b|\btravel time\b/i.test(query)) {
+    return "source";
   }
   return "help";
 }
@@ -109,6 +113,9 @@ export function planAgentCommand(
   const specialty = detectSpecialty(query);
   const intent = detectIntent(query, specialty);
   const selectedSpecialty = specialty ?? "general";
+  const searchLocation = /\bbeirut\b|\bdemo(?:nstration)?\b/i.test(query)
+    ? "beirut-demo"
+    : "gps";
   let reply: string;
   let actions: AgentAction[] = [];
   let shouldUseLocalModel = false;
@@ -120,9 +127,11 @@ export function planAgentCommand(
     actions = findActions("general");
   } else if (intent === "find") {
     const label = emergencyTypeLabel(selectedSpecialty);
-    reply = `I prepared a ${label} routing task. Open the search, share a location or use the labelled presentation point, and QuickER will retrieve nearby OpenStreetMap hospitals before ranking eligible road ETAs.`;
-    actions = findActions(selectedSpecialty);
-    sourceLabel = "Navigation action";
+    reply =
+      searchLocation === "beirut-demo"
+        ? `I’ll search from the clearly labelled Beirut demo point, retrieve nearby ${label} options, calculate road ETAs, and return the best routing option here.`
+        : `I’ll request your browser location, retrieve nearby ${label} options, calculate road ETAs, and return the best routing option here.`;
+    sourceLabel = "Executable routing tools";
   } else if (intent === "map") {
     const label = emergencyTypeLabel(selectedSpecialty);
     reply = `Open the ${label} accessibility map to inspect nearby facilities and the 5/10/15-minute layers. The static $0 build labels estimated circles clearly when road isochrones are unavailable.`;
@@ -180,14 +189,24 @@ export function planAgentCommand(
     sourceLabel = "Agent help";
   }
 
-  const contextDetail = decision
-    ? `Loaded the latest local decision for ${decision.recommendedHospital}; precise coordinates are not stored.`
-    : "No previous routing summary is stored in this browser.";
+  const contextDetail =
+    intent === "find"
+      ? "A new routing search will run now; no previous decision is required."
+      : decision
+        ? `Loaded the latest local decision for ${decision.recommendedHospital}; precise coordinates are not stored.`
+        : "No previous routing summary is stored in this browser.";
   const safetyWarning = intent === "medical-boundary";
+  const actionDetail =
+    intent === "find"
+      ? "Authorized the location, hospital discovery, ETA ranking, and result verification tool chain."
+      : actions.length
+        ? `Prepared ${actions.length} verified navigation action${actions.length === 1 ? "" : "s"}.`
+        : "Prepared a source-grounded response with no external action.";
 
   return {
     intent,
     specialty,
+    searchLocation,
     reply,
     actions,
     shouldUseLocalModel,
@@ -211,14 +230,12 @@ export function planAgentCommand(
         id: "context",
         label: "Local context",
         detail: contextDetail,
-        status: decision ? "complete" : "warning",
+        status: decision || intent === "find" ? "complete" : "warning",
       },
       {
         id: "action",
         label: "Action planner",
-        detail: actions.length
-          ? `Prepared ${actions.length} verified navigation action${actions.length === 1 ? "" : "s"}.`
-          : "Prepared a source-grounded response with no external action.",
+        detail: actionDetail,
         status: "complete",
       },
     ],

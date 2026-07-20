@@ -3,7 +3,6 @@ import {
   type KeyboardEvent,
   useEffect,
   useRef,
-  useState,
 } from "react";
 import { Link } from "react-router-dom";
 import {
@@ -32,6 +31,7 @@ import { Card } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import Layout from "@/components/Layout";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { usePageMemory } from "@/hooks/usePageMemory";
 import {
   getDecisionHistory,
   type DecisionRecord,
@@ -126,16 +126,33 @@ function directionsUrl(result: AgentSearchResult): string {
 const HealthAssistant = () => {
   const { language } = useLanguage();
   const [sessionDecision, setSessionDecision] =
-    useState<DecisionRecord | null>(null);
+    usePageMemory<DecisionRecord | null>("agent.sessionDecision", null);
   const latestDecision = sessionDecision ?? getDecisionHistory()[0];
-  const [input, setInput] = useState("");
-  const [messages, setMessages] = useState<AgentMessage[]>([initialMessage]);
-  const [trace, setTrace] = useState<AgentTraceItem[]>([]);
-  const [isThinking, setIsThinking] = useState(false);
-  const [progress, setProgress] = useState<AgentProgress | null>(null);
+  const [input, setInput] = usePageMemory("agent.input", "");
+  const [messages, setMessages] = usePageMemory<AgentMessage[]>(
+    "agent.messages",
+    [initialMessage],
+  );
+  const [trace, setTrace] = usePageMemory<AgentTraceItem[]>(
+    "agent.trace",
+    [],
+  );
+  const [isThinking, setIsThinking] = usePageMemory(
+    "agent.isThinking",
+    false,
+  );
+  const [progress, setProgress] = usePageMemory<AgentProgress | null>(
+    "agent.progress",
+    null,
+  );
   const messageEndRef = useRef<HTMLDivElement>(null);
+  const hasMountedRef = useRef(false);
 
   useEffect(() => {
+    if (!hasMountedRef.current) {
+      hasMountedRef.current = true;
+      return;
+    }
     messageEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, progress]);
 

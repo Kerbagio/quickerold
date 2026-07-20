@@ -12,7 +12,8 @@ QuickER ranks nearby hospitals by the fastest suitable travel option—not strai
 - General, cardiac, pediatric, and maternity metadata filtering.
 - Automatic distance-estimate fallback if public routing is unavailable.
 - Simulated availability changes for demonstrating automatic reranking.
-- Local-only analytics dashboard and CSV export; precise coordinates are not stored.
+- Local-only analytics dashboard and CSV export; decision history excludes precise coordinates.
+- In-app page memory preserves searches, filters, routes, onboarding progress, and Agent conversations while navigating. Every destination opens at the top.
 - A typed dispatch agent that executes location, hospital discovery, ETA ranking, and result-verification tools inside the conversation.
 - On-device AI explanation with an immediate verified deterministic fallback.
 
@@ -36,6 +37,8 @@ Do not enable billing when the goal is a strict $0 ceiling. Free quotas can run 
 5. Rank `accepting`, then `limited`, then `unknown`, and place `diverting` facilities last; sort each group by ETA.
 6. Highlight the best option, disclose its source, and render the road path.
 7. Store only a small, local decision summary for the dashboard and agent explanation.
+
+Interactive page state—including precise GPS coordinates needed to restore a search—stays only in volatile JavaScript memory for the current browser tab. It is never written to `localStorage` or decision history and disappears on reload or tab close. Preferences and non-location decision summaries can remain in browser storage until the user clears them.
 
 The open FLAN-T5 Small model is downloaded on demand and runs inside a browser worker. It receives only the non-location decision summary, cannot change the selected hospital, and is rejected if it omits core facts or adds unsupported medical claims. The first model download is about 100 MB; the browser can reuse its cache. If loading or validation fails, QuickER displays the deterministic explanation.
 

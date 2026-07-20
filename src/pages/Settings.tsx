@@ -11,6 +11,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { Link } from "react-router-dom";
 import { useTheme } from "next-themes";
+import { clearPageMemory } from "@/hooks/usePageMemory";
 
 const Settings = () => {
   const { language, setLanguage, t } = useLanguage();
@@ -77,6 +78,7 @@ const Settings = () => {
     }
     
     keysToRemove.forEach(key => localStorage.removeItem(key));
+    clearPageMemory();
     
     toast({
       title: t('toast.cacheCleared'),

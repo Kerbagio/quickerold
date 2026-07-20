@@ -26,6 +26,7 @@ import {
   type IsochroneSource,
 } from "@/services/isochrones";
 import type { Coordinate, EtaSource } from "@/services/routing";
+import { usePageMemory } from "@/hooks/usePageMemory";
 
 interface HospitalMapItem {
   id: string;
@@ -40,6 +41,7 @@ interface HospitalMapItem {
 }
 
 interface MapProps {
+  memoryKey: string;
   className?: string;
   showUserLocation?: boolean;
   showIsochrones?: boolean;
@@ -75,20 +77,24 @@ interface OsrmRouteResponse {
 
 interface RoutePanelState {
   hospital: HospitalMapItem | null;
+  routeOrigin: Coordinate | null;
   loading: boolean;
   error: string | null;
   roadDistanceKm: number | null;
   roadDurationMinutes: number | null;
   directions: string[];
+  routeCoordinates: Array<[number, number]>;
 }
 
 const defaultRoutePanel: RoutePanelState = {
   hospital: null,
+  routeOrigin: null,
   loading: false,
   error: null,
   roadDistanceKm: null,
   roadDurationMinutes: null,
   directions: [],
+  routeCoordinates: [],
 };
 
 const sourceLabel: Record<EtaSource, string> = {
@@ -120,6 +126,7 @@ function directionLabel(step: {
 const Map = forwardRef<MapRef, MapProps>(
   (
     {
+      memoryKey,
       className,
       showUserLocation = true,
       showIsochrones = false,
@@ -140,8 +147,10 @@ const Map = forwardRef<MapRef, MapProps>(
     const onLocationSelectRef = useRef(onLocationSelect);
     const onIsochroneSourceChangeRef = useRef(onIsochroneSourceChange);
     const [mapReady, setMapReady] = useState(false);
-    const [routePanel, setRoutePanel] =
-      useState<RoutePanelState>(defaultRoutePanel);
+    const [routePanel, setRoutePanel] = usePageMemory<RoutePanelState>(
+      `${memoryKey}.routePanel`,
+      defaultRoutePanel,
+    );
 
     useEffect(() => {
       onLocationSelectRef.current = onLocationSelect;
@@ -225,6 +234,7 @@ const Map = forwardRef<MapRef, MapProps>(
       setRoutePanel({
         ...defaultRoutePanel,
         hospital,
+        routeOrigin: origin,
         loading: true,
       });
 
@@ -251,24 +261,19 @@ const Map = forwardRef<MapRef, MapProps>(
           throw new Error("no route returned");
         }
 
-        layer.clearLayers();
-        const path = L.polyline(
-          routeCoordinates.map(([lng, lat]) => [lat, lng] as [number, number]),
-          { color: "#dc2626", weight: 6, opacity: 0.88 },
-        ).addTo(layer);
-        map.fitBounds(path.getBounds(), { padding: [32, 32] });
-
         const directions = (route.legs?.[0]?.steps ?? [])
           .filter((step) => (step.distance ?? 0) > 20)
           .slice(0, 10)
           .map(directionLabel);
         setRoutePanel({
           hospital,
+          routeOrigin: origin,
           loading: false,
           error: null,
           roadDistanceKm: route.distance / 1000,
           roadDurationMinutes: Math.max(1, Math.ceil(route.duration / 60)),
           directions,
+          routeCoordinates,
         });
       } catch {
         setRoutePanel((current) => ({
@@ -278,7 +283,7 @@ const Map = forwardRef<MapRef, MapProps>(
             "The public route service is unavailable. You can still open this hospital in your navigation app.",
         }));
       }
-    }, []);
+    }, [setRoutePanel]);
 
     useEffect(() => {
       if (!mapContainerRef.current || mapRef.current) return;
@@ -346,6 +351,43 @@ const Map = forwardRef<MapRef, MapProps>(
         marker.on("click", () => void loadRoute(hospital));
       });
     }, [hospitals, loadRoute, mapReady]);
+
+    useEffect(() => {
+      if (!routePanel.hospital) return;
+      const hospitalStillListed = hospitals.some(
+        (hospital) => hospital.id === routePanel.hospital?.id,
+      );
+      const originStillCurrent =
+        !routePanel.routeOrigin ||
+        (userLocation?.lat === routePanel.routeOrigin.lat &&
+          userLocation?.lng === routePanel.routeOrigin.lng);
+      if (hospitalStillListed && originStillCurrent) return;
+
+      routeLayerRef.current?.clearLayers();
+      setRoutePanel(defaultRoutePanel);
+    }, [
+      hospitals,
+      routePanel.hospital,
+      routePanel.routeOrigin,
+      setRoutePanel,
+      userLocation,
+    ]);
+
+    useEffect(() => {
+      const map = mapRef.current;
+      const layer = routeLayerRef.current;
+      if (!mapReady || !map || !layer) return;
+
+      layer.clearLayers();
+      if (!routePanel.routeCoordinates.length) return;
+      const path = L.polyline(
+        routePanel.routeCoordinates.map(
+          ([lng, lat]) => [lat, lng] as [number, number],
+        ),
+        { color: "#dc2626", weight: 6, opacity: 0.88 },
+      ).addTo(layer);
+      map.fitBounds(path.getBounds(), { padding: [32, 32] });
+    }, [mapReady, routePanel.routeCoordinates]);
 
     useEffect(() => {
       const map = mapRef.current;

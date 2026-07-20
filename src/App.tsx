@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { ThemeProvider } from "next-themes";
 import { lazy, Suspense } from "react";
 import OfflineNotice from "./components/OfflineNotice";
+import ScrollToTop from "./components/ScrollToTop";
 
 const Index = lazy(() => import("./pages/Index"));
 const Options = lazy(() => import("./pages/Options"));
@@ -33,6 +34,7 @@ const App = () => (
         <Sonner />
         <OfflineNotice />
         <BrowserRouter basename={import.meta.env.BASE_URL}>
+          <ScrollToTop />
           <Suspense
             fallback={
               <div className="flex min-h-screen items-center justify-center text-sm text-muted-foreground">

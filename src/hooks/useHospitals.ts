@@ -1,9 +1,12 @@
-import { useCallback, useState } from "react";
+import { useCallback } from "react";
 import { useToast } from "@/hooks/use-toast";
+import { usePageMemory } from "@/hooks/usePageMemory";
+import { normalizeEmergencyType } from "@/services/emergency";
 import {
   hospitalSearchErrorMessage,
   searchHospitals,
   type Hospital,
+  type HospitalSearchResult,
   type HospitalSearchOptions,
   type RoutingStatus,
 } from "@/services/hospitalSearch";
@@ -26,18 +29,37 @@ interface UseHospitalsReturn {
   bestOption: Hospital | null;
   routingStatus: RoutingStatus;
   specialtyFallback: boolean;
+  searchCriteria: Pick<
+    HospitalSearchResult,
+    "origin" | "radiusKm" | "emergencyType"
+  > | null;
 }
 
-export const useHospitals = (): UseHospitalsReturn => {
-  const [hospitals, setHospitals] = useState<Hospital[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [specialtyFallback, setSpecialtyFallback] = useState(false);
-  const [routingStatus, setRoutingStatus] = useState<RoutingStatus>({
-    source: null,
-    notice: "",
-    generatedAt: null,
-  });
+export const useHospitals = (memoryKey = "shared"): UseHospitalsReturn => {
+  const [hospitals, setHospitals] = usePageMemory<Hospital[]>(
+    `${memoryKey}.hospitals`,
+    [],
+  );
+  const [loading, setLoading] = usePageMemory(`${memoryKey}.loading`, false);
+  const [error, setError] = usePageMemory<string | null>(
+    `${memoryKey}.error`,
+    null,
+  );
+  const [specialtyFallback, setSpecialtyFallback] = usePageMemory(
+    `${memoryKey}.specialtyFallback`,
+    false,
+  );
+  const [routingStatus, setRoutingStatus] = usePageMemory<RoutingStatus>(
+    `${memoryKey}.routingStatus`,
+    {
+      source: null,
+      notice: "",
+      generatedAt: null,
+    },
+  );
+  const [searchCriteria, setSearchCriteria] = usePageMemory<
+    Pick<HospitalSearchResult, "origin" | "radiusKm" | "emergencyType"> | null
+  >(`${memoryKey}.searchCriteria`, null);
   const { toast } = useToast();
 
   const fetchHospitals = useCallback(
@@ -49,12 +71,24 @@ export const useHospitals = (): UseHospitalsReturn => {
       setLoading(true);
       setError(null);
       setSpecialtyFallback(false);
+      setSearchCriteria({
+        origin: { lat, lng },
+        radiusKm: Math.min(Math.max(options.radius ?? 8, 2), 25),
+        emergencyType: normalizeEmergencyType(
+          options.emergencyType ?? "general",
+        ),
+      });
 
       try {
         const result = await searchHospitals(lat, lng, options);
         setHospitals(result.hospitals);
         setSpecialtyFallback(result.specialtyFallback);
         setRoutingStatus(result.routingStatus);
+        setSearchCriteria({
+          origin: result.origin,
+          radiusKm: result.radiusKm,
+          emergencyType: result.emergencyType,
+        });
 
         toast({
           title: `${result.hospitals.length} hospitals ranked`,
@@ -75,7 +109,15 @@ export const useHospitals = (): UseHospitalsReturn => {
         setLoading(false);
       }
     },
-    [toast],
+    [
+      setError,
+      setHospitals,
+      setLoading,
+      setRoutingStatus,
+      setSearchCriteria,
+      setSpecialtyFallback,
+      toast,
+    ],
   );
 
   return {
@@ -86,5 +128,6 @@ export const useHospitals = (): UseHospitalsReturn => {
     bestOption: hospitals[0] ?? null,
     routingStatus,
     specialtyFallback,
+    searchCriteria,
   };
 };

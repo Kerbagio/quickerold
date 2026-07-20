@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useRef } from "react";
 import { useSearchParams } from "react-router-dom";
 import { AlertCircle, Clock, MapPin, Navigation, Shield } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -8,6 +8,7 @@ import Layout from "@/components/Layout";
 import Map, { type MapRef } from "@/components/Map";
 import { useToast } from "@/hooks/use-toast";
 import { useHospitals } from "@/hooks/useHospitals";
+import { usePageMemory } from "@/hooks/usePageMemory";
 import { useLanguage } from "@/contexts/LanguageContext";
 import {
   availabilityLabel,
@@ -38,11 +39,14 @@ const Index = () => {
   const requestedEmergency = searchParams.get("emergencyType");
   const hasAgentEmergencyRequest = isEmergencyType(requestedEmergency);
   const agentEmergencyType = normalizeEmergencyType(requestedEmergency);
-  const [userLocation, setUserLocation] = useState<{
+  const [userLocation, setUserLocation] = usePageMemory<{
     lat: number;
     lng: number;
-  } | null>(null);
-  const [permissionDenied, setPermissionDenied] = useState(false);
+  } | null>("home.location", null);
+  const [permissionDenied, setPermissionDenied] = usePageMemory(
+    "home.permissionDenied",
+    false,
+  );
   const { toast } = useToast();
   const {
     hospitals,
@@ -52,7 +56,7 @@ const Index = () => {
     bestOption,
     routingStatus,
     specialtyFallback,
-  } = useHospitals();
+  } = useHospitals("home");
   const { t, language } = useLanguage();
   const mapRef = useRef<MapRef>(null);
 
@@ -208,6 +212,7 @@ const Index = () => {
             )}
             <Map
               ref={mapRef}
+              memoryKey="home.map"
               className="h-72 lg:h-96"
               hospitals={hospitals}
               userLocation={userLocation}

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo } from "react";
 import {
   Activity,
   BarChart3,
@@ -31,6 +31,7 @@ import {
 } from "@/components/ui/select";
 import Layout from "@/components/Layout";
 import { useHospitals } from "@/hooks/useHospitals";
+import { usePageMemory } from "@/hooks/usePageMemory";
 import { useToast } from "@/hooks/use-toast";
 import { useLanguage } from "@/contexts/LanguageContext";
 import {
@@ -75,17 +76,24 @@ function downloadCsv(rows: Array<Record<string, CsvValue>>, filename: string) {
 const Dashboard = () => {
   const { language } = useLanguage();
   const { toast } = useToast();
-  const { hospitals, loading, fetchHospitals, routingStatus } = useHospitals();
-  const [userLocation, setUserLocation] = useState<{
+  const {
+    hospitals,
+    loading,
+    fetchHospitals,
+    routingStatus,
+    searchCriteria,
+  } = useHospitals("dashboard");
+  const [userLocation, setUserLocation] = usePageMemory<{
     lat: number;
     lng: number;
-  } | null>(null);
-  const [history, setHistory] = useState<DecisionRecord[]>(() =>
-    getDecisionHistory(),
+  } | null>("dashboard.location", null);
+  const [history, setHistory] = usePageMemory<DecisionRecord[]>(
+    "dashboard.history",
+    () => getDecisionHistory(),
   );
 
   useEffect(() => {
-    if (!navigator.geolocation) return;
+    if (userLocation || !navigator.geolocation) return;
     navigator.geolocation.getCurrentPosition(
       (position) =>
         setUserLocation({
@@ -95,19 +103,25 @@ const Dashboard = () => {
       () => undefined,
       { enableHighAccuracy: true, timeout: 10000, maximumAge: 30000 },
     );
-  }, []);
+  }, [setUserLocation, userLocation]);
 
   useEffect(() => {
-    if (!userLocation) return;
+    if (!userLocation || hospitals.length || loading || searchCriteria) return;
     void fetchHospitals(userLocation.lat, userLocation.lng, {
       radius: 15,
       emergencyType: "general",
     });
-  }, [fetchHospitals, userLocation]);
+  }, [
+    fetchHospitals,
+    hospitals.length,
+    loading,
+    searchCriteria,
+    userLocation,
+  ]);
 
   useEffect(() => {
     setHistory(getDecisionHistory());
-  }, [hospitals]);
+  }, [hospitals, setHistory]);
 
   const reloadHospitals = () => {
     if (!userLocation) return;
@@ -353,7 +367,7 @@ const Dashboard = () => {
                 <BarChart3 className="mr-2 h-5 w-5" /> Local decision history
               </h2>
               <p className="text-sm text-muted-foreground">
-                No precise coordinates are stored. {liveTrafficDecisions} searches used live traffic.
+                Decision history excludes precise coordinates. {liveTrafficDecisions} searches used live traffic.
               </p>
             </div>
             <Button variant="outline" onClick={exportHistory} disabled={!history.length}>

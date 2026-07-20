@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
 import { AlertTriangle, Filter, RefreshCw } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -9,32 +9,43 @@ import Layout from "@/components/Layout";
 import Map from "@/components/Map";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useHospitals } from "@/hooks/useHospitals";
+import { usePageMemory } from "@/hooks/usePageMemory";
 import type { IsochroneSource } from "@/services/isochrones";
 import {
+  isEmergencyType,
   normalizeEmergencyType,
   type EmergencyType,
 } from "@/services/emergency";
 
 const Options = () => {
   const [searchParams] = useSearchParams();
-  const [selectedType, setSelectedType] = useState(() =>
-    normalizeEmergencyType(searchParams.get("emergencyType")),
+  const requestedType = searchParams.get("emergencyType");
+  const requestedEmergencyType = isEmergencyType(requestedType)
+    ? requestedType
+    : null;
+  const [selectedType, setSelectedType] = usePageMemory<EmergencyType>(
+    "options.selectedType",
+    () => normalizeEmergencyType(requestedType),
   );
-  const [radius, setRadius] = useState([8]);
-  const [userLocation, setUserLocation] = useState<{
+  const [radius, setRadius] = usePageMemory("options.radius", [8]);
+  const [userLocation, setUserLocation] = usePageMemory<{
     lat: number;
     lng: number;
-  } | null>(null);
+  } | null>("options.location", null);
   const [isochroneSource, setIsochroneSource] =
-    useState<IsochroneSource>("distance-estimate");
+    usePageMemory<IsochroneSource>(
+      "options.isochroneSource",
+      "distance-estimate",
+    );
   const { t, language } = useLanguage();
   const {
     hospitals,
     loading,
     fetchHospitals,
     routingStatus,
+    searchCriteria,
     specialtyFallback,
-  } = useHospitals();
+  } = useHospitals("options");
 
   const emergencyTypes: Array<{ id: EmergencyType; label: string }> = [
     { id: "general", label: t("emergency.general") },
@@ -44,7 +55,7 @@ const Options = () => {
   ];
 
   useEffect(() => {
-    if (!navigator.geolocation) return;
+    if (userLocation || !navigator.geolocation) return;
     navigator.geolocation.getCurrentPosition(
       (position) =>
         setUserLocation({
@@ -54,17 +65,59 @@ const Options = () => {
       () => undefined,
       { enableHighAccuracy: true, timeout: 10000, maximumAge: 30000 },
     );
-  }, []);
+  }, [setUserLocation, userLocation]);
 
   useEffect(() => {
-    if (!userLocation) return;
+    if (!requestedEmergencyType) return;
+    if (requestedEmergencyType !== selectedType) {
+      setSelectedType(requestedEmergencyType);
+    }
+    if (
+      !userLocation ||
+      loading ||
+      searchCriteria?.emergencyType === requestedEmergencyType
+    ) {
+      return;
+    }
+    void fetchHospitals(userLocation.lat, userLocation.lng, {
+      radius: radius[0],
+      emergencyType: requestedEmergencyType,
+    });
+  }, [
+    fetchHospitals,
+    loading,
+    radius,
+    requestedEmergencyType,
+    searchCriteria?.emergencyType,
+    selectedType,
+    setSelectedType,
+    userLocation,
+  ]);
+
+  useEffect(() => {
+    if (
+      !userLocation ||
+      requestedEmergencyType ||
+      hospitals.length ||
+      loading ||
+      searchCriteria
+    ) {
+      return;
+    }
     void fetchHospitals(userLocation.lat, userLocation.lng, {
       radius: radius[0],
       emergencyType: selectedType,
     });
     // A new location should run once. Filter/radius changes are applied with the button.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [userLocation, fetchHospitals]);
+  }, [
+    userLocation,
+    requestedEmergencyType,
+    hospitals.length,
+    loading,
+    searchCriteria,
+    fetchHospitals,
+  ]);
 
   const updateResults = () => {
     if (!userLocation) return;
@@ -188,6 +241,7 @@ const Options = () => {
           </div>
 
           <Map
+            memoryKey="options.map"
             className="h-80 lg:h-96"
             hospitals={hospitals}
             userLocation={userLocation}

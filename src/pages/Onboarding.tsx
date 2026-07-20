@@ -1,15 +1,21 @@
-import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { MapPin, Shield, Globe, ChevronRight, ChevronLeft } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { usePageMemory } from "@/hooks/usePageMemory";
 import { useLanguage } from "@/contexts/LanguageContext";
 
 const Onboarding = () => {
-  const [currentSlide, setCurrentSlide] = useState(0);
-  const [locationEnabled, setLocationEnabled] = useState(false);
+  const [currentSlide, setCurrentSlide] = usePageMemory(
+    "onboarding.currentSlide",
+    0,
+  );
+  const [locationEnabled, setLocationEnabled] = usePageMemory(
+    "onboarding.locationEnabled",
+    false,
+  );
   const navigate = useNavigate();
   const { toast } = useToast();
   const { language, setLanguage, t } = useLanguage();

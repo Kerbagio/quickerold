@@ -733,6 +733,12 @@ const translations: Record<Language, Record<string, string>> = {
     // Settings
     'settings.title': 'Paramètres',
     'settings.subtitle': 'Personnalisez votre expérience QuickER',
+    'settings.appearance': 'Apparence',
+    'settings.theme': 'Thème',
+    'settings.themeDesc': 'Choisissez votre apparence de thème préférée',
+    'settings.light': 'Clair',
+    'settings.dark': 'Sombre',
+    'settings.system': 'Système',
     'settings.language': 'Langue',
     'settings.interfaceLanguage': 'Langue de l\'interface',
     'settings.languageDesc': 'Choisissez votre langue préférée pour l\'application',

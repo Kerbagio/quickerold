@@ -175,3 +175,8 @@ All colors MUST be HSL.
   .min-h-screen-dvh { min-height: 100dvh; }
   .h-screen-dvh { height: 100dvh; }
 }
+
+/* Hide leaflet-routing-machine's default directions panel; QuickER uses its own. */
+.leaflet-routing-container {
+  display: none !important;
+}

@@ -19,6 +19,8 @@ import {
 } from "lucide-react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
+import "leaflet-routing-machine";
+import "leaflet-routing-machine/dist/leaflet-routing-machine.css";
 import { useTheme } from "next-themes";
 import type { AvailabilityStatus } from "@/services/availability";
 import { availabilityLabel } from "@/services/availability";
@@ -61,22 +63,6 @@ export interface MapRef {
   ) => void;
 }
 
-interface OsrmRouteResponse {
-  code?: string;
-  routes?: Array<{
-    distance: number;
-    duration: number;
-    geometry?: { coordinates?: Array<[number, number]> };
-    legs?: Array<{
-      steps?: Array<{
-        name?: string;
-        distance?: number;
-        maneuver?: { type?: string; modifier?: string };
-      }>;
-    }>;
-  }>;
-}
-
 interface RoutePanelState {
   hospital: HospitalMapItem | null;
   routeOrigin: Coordinate | null;
@@ -84,8 +70,7 @@ interface RoutePanelState {
   error: string | null;
   roadDistanceKm: number | null;
   roadDurationMinutes: number | null;
-  directions: string[];
-  routeCoordinates: Array<[number, number]>;
+  directions: Array<{ text: string; distance: number }>;
 }
 
 const defaultRoutePanel: RoutePanelState = {
@@ -96,7 +81,6 @@ const defaultRoutePanel: RoutePanelState = {
   roadDistanceKm: null,
   roadDurationMinutes: null,
   directions: [],
-  routeCoordinates: [],
 };
 
 const sourceLabel: Record<EtaSource, string> = {
@@ -115,18 +99,10 @@ function tileUrl(dark: boolean): string {
   return `https://{s}.basemaps.cartocdn.com/${dark ? "dark_all" : "light_all"}/{z}/{x}/{y}{r}.png`;
 }
 
-function directionLabel(step: {
-  name?: string;
-  maneuver?: { type?: string; modifier?: string };
-}): string {
-  const road = step.name ? ` on ${step.name}` : "";
-  const modifier = step.maneuver?.modifier
-    ? ` ${step.maneuver.modifier.split("_").join(" ")}`
-    : "";
-  const action = step.maneuver?.type?.split("_").join(" ") ?? "continue";
-  return `${action}${modifier}${road}`.replace(/^./, (letter) =>
-    letter.toUpperCase(),
-  );
+function hideRoutingMachineUi() {
+  document.querySelectorAll(".leaflet-routing-container").forEach((node) => {
+    node.parentNode?.removeChild(node);
+  });
 }
 
 const Map = forwardRef<MapRef, MapProps>(
@@ -150,10 +126,10 @@ const Map = forwardRef<MapRef, MapProps>(
     const userLocationRef = useRef<Coordinate | null>(null);
     const userMarkerRef = useRef<L.Marker | null>(null);
     const hospitalLayerRef = useRef<L.LayerGroup | null>(null);
-    const routeLayerRef = useRef<L.LayerGroup | null>(null);
     const isochroneLayerRef = useRef<L.LayerGroup | null>(null);
     const searchRadiusLayerRef = useRef<L.LayerGroup | null>(null);
     const tileLayerRef = useRef<L.TileLayer | null>(null);
+    const routingControlRef = useRef<L.Routing.Control | null>(null);
     const onLocationSelectRef = useRef(onLocationSelect);
     const onIsochroneSourceChangeRef = useRef(onIsochroneSourceChange);
     const [mapReady, setMapReady] = useState(false);
@@ -169,6 +145,20 @@ const Map = forwardRef<MapRef, MapProps>(
     useEffect(() => {
       onIsochroneSourceChangeRef.current = onIsochroneSourceChange;
     }, [onIsochroneSourceChange]);
+
+    const clearRoutingControl = useCallback(() => {
+      const map = mapRef.current;
+      const control = routingControlRef.current;
+      if (map && control) {
+        try {
+          map.removeControl(control);
+        } catch {
+          // Control may already be detached during remounts.
+        }
+      }
+      routingControlRef.current = null;
+      hideRoutingMachineUi();
+    }, []);
 
     const placeUserMarker = useCallback(
       (location: Coordinate, recenter = true) => {
@@ -237,63 +227,106 @@ const Map = forwardRef<MapRef, MapProps>(
       onIsochroneSourceChangeRef.current?.("distance-estimate");
     }, []);
 
-    const loadRoute = useCallback(async (hospital: HospitalMapItem) => {
-      const origin = userLocationRef.current;
-      const map = mapRef.current;
-      const layer = routeLayerRef.current;
-      setRoutePanel({
-        ...defaultRoutePanel,
-        hospital,
-        routeOrigin: origin,
-        loading: true,
-      });
+    const loadRoute = useCallback(
+      (hospital: HospitalMapItem) => {
+        const origin = userLocationRef.current;
+        const map = mapRef.current;
 
-      if (!origin || !map || !layer) {
-        setRoutePanel((current) => ({
-          ...current,
-          loading: false,
-          error: "Share or select a start location first.",
-        }));
-        return;
-      }
-
-      try {
-        const coordinates = `${origin.lng},${origin.lat};${hospital.lng},${hospital.lat}`;
-        const response = await fetch(
-          `https://router.project-osrm.org/route/v1/driving/${coordinates}?overview=full&geometries=geojson&steps=true`,
-        );
-        if (!response.ok) throw new Error("route request failed");
-
-        const payload = (await response.json()) as OsrmRouteResponse;
-        const route = payload.routes?.[0];
-        const routeCoordinates = route?.geometry?.coordinates;
-        if (payload.code !== "Ok" || !route || !routeCoordinates?.length) {
-          throw new Error("no route returned");
-        }
-
-        const directions = (route.legs?.[0]?.steps ?? [])
-          .filter((step) => (step.distance ?? 0) > 20)
-          .slice(0, 10)
-          .map(directionLabel);
+        clearRoutingControl();
         setRoutePanel({
+          ...defaultRoutePanel,
           hospital,
           routeOrigin: origin,
-          loading: false,
-          error: null,
-          roadDistanceKm: route.distance / 1000,
-          roadDurationMinutes: Math.max(1, Math.ceil(route.duration / 60)),
-          directions,
-          routeCoordinates,
+          loading: true,
         });
-      } catch {
-        setRoutePanel((current) => ({
-          ...current,
-          loading: false,
-          error:
-            "The public route service is unavailable. You can still open this hospital in your navigation app.",
-        }));
-      }
-    }, [setRoutePanel]);
+
+        if (!origin || !map) {
+          setRoutePanel((current) => ({
+            ...current,
+            loading: false,
+            error: "Share or select a start location first.",
+          }));
+          return;
+        }
+
+        const waypoints = [
+          L.latLng(origin.lat, origin.lng),
+          L.latLng(hospital.lat, hospital.lng),
+        ];
+
+        const control = L.Routing.control({
+          waypoints,
+          plan: L.Routing.plan(waypoints, {
+            createMarker: () => false,
+            addWaypoints: false,
+            draggableWaypoints: false,
+          }),
+          routeWhileDragging: false,
+          showAlternatives: false,
+          fitSelectedRoutes: true,
+          addWaypoints: false,
+          show: false,
+          lineOptions: {
+            styles: [{ color: "#dc2626", weight: 6, opacity: 0.9 }],
+            extendToWaypoints: true,
+            missingRouteTolerance: 10,
+          },
+          router: L.Routing.osrmv1({
+            serviceUrl: "https://router.project-osrm.org/route/v1",
+          }),
+        }).addTo(map);
+
+        routingControlRef.current = control;
+        window.setTimeout(hideRoutingMachineUi, 100);
+
+        control.on("routesfound", (event: L.Routing.RoutingResultEvent) => {
+          const route = event.routes?.[0];
+          if (!route) {
+            setRoutePanel((current) => ({
+              ...current,
+              loading: false,
+              error:
+                "The public route service is unavailable. You can still open this hospital in your navigation app.",
+            }));
+            return;
+          }
+
+          const directions = (route.instructions ?? [])
+            .filter((step) => (step.distance ?? 0) > 20)
+            .slice(0, 10)
+            .map((step) => ({
+              text: step.text,
+              distance: Math.round(step.distance ?? 0),
+            }));
+
+          setRoutePanel({
+            hospital,
+            routeOrigin: origin,
+            loading: false,
+            error: null,
+            roadDistanceKm:
+              Math.round(((route.summary?.totalDistance ?? 0) / 1000) * 10) / 10,
+            roadDurationMinutes: Math.max(
+              1,
+              Math.round((route.summary?.totalTime ?? 0) / 60),
+            ),
+            directions,
+          });
+          hideRoutingMachineUi();
+        });
+
+        control.on("routingerror", () => {
+          setRoutePanel((current) => ({
+            ...current,
+            loading: false,
+            error:
+              "The public route service is unavailable. You can still open this hospital in your navigation app.",
+          }));
+          hideRoutingMachineUi();
+        });
+      },
+      [clearRoutingControl, setRoutePanel],
+    );
 
     useEffect(() => {
       if (!mapContainerRef.current || mapRef.current) return;
@@ -311,17 +344,18 @@ const Map = forwardRef<MapRef, MapProps>(
 
       mapRef.current = map;
       hospitalLayerRef.current = L.layerGroup().addTo(map);
-      routeLayerRef.current = L.layerGroup().addTo(map);
       isochroneLayerRef.current = L.layerGroup().addTo(map);
       searchRadiusLayerRef.current = L.layerGroup().addTo(map);
       setMapReady(true);
 
       return () => {
+        clearRoutingControl();
         map.remove();
         mapRef.current = null;
         tileLayerRef.current = null;
+        userMarkerRef.current = null;
       };
-    }, []);
+    }, [clearRoutingControl]);
 
     useEffect(() => {
       if (!resolvedTheme || !tileLayerRef.current) return;
@@ -340,6 +374,14 @@ const Map = forwardRef<MapRef, MapProps>(
       showUserLocation,
       userLocation,
     ]);
+
+    // Restore a remembered route drawing once the Leaflet map is ready.
+    useEffect(() => {
+      if (!mapReady || !routePanel.hospital || routingControlRef.current) return;
+      loadRoute(routePanel.hospital);
+      // Intentionally run only when the map first becomes ready.
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [mapReady]);
 
     useEffect(() => {
       const layer = searchRadiusLayerRef.current;
@@ -388,7 +430,7 @@ const Map = forwardRef<MapRef, MapProps>(
           .join(" • ");
         popup.append(title, details);
         marker.bindPopup(popup);
-        marker.on("click", () => void loadRoute(hospital));
+        marker.on("click", () => loadRoute(hospital));
       });
     }, [hospitals, loadRoute, mapReady]);
 
@@ -403,31 +445,16 @@ const Map = forwardRef<MapRef, MapProps>(
           userLocation?.lng === routePanel.routeOrigin.lng);
       if (hospitalStillListed && originStillCurrent) return;
 
-      routeLayerRef.current?.clearLayers();
+      clearRoutingControl();
       setRoutePanel(defaultRoutePanel);
     }, [
+      clearRoutingControl,
       hospitals,
       routePanel.hospital,
       routePanel.routeOrigin,
       setRoutePanel,
       userLocation,
     ]);
-
-    useEffect(() => {
-      const map = mapRef.current;
-      const layer = routeLayerRef.current;
-      if (!mapReady || !map || !layer) return;
-
-      layer.clearLayers();
-      if (!routePanel.routeCoordinates.length) return;
-      const path = L.polyline(
-        routePanel.routeCoordinates.map(
-          ([lng, lat]) => [lat, lng] as [number, number],
-        ),
-        { color: "#dc2626", weight: 6, opacity: 0.88 },
-      ).addTo(layer);
-      map.fitBounds(path.getBounds(), { padding: [32, 32] });
-    }, [mapReady, routePanel.routeCoordinates]);
 
     useEffect(() => {
       const map = mapRef.current;
@@ -452,10 +479,10 @@ const Map = forwardRef<MapRef, MapProps>(
           const hospital = hospitals.find(
             (candidate) =>
               candidate.name === hospitalName &&
-                candidate.lat === hospitalLat &&
-                candidate.lng === hospitalLng,
+              candidate.lat === hospitalLat &&
+              candidate.lng === hospitalLng,
           );
-          if (hospital) void loadRoute(hospital);
+          if (hospital) loadRoute(hospital);
         },
       }),
       [hospitals, loadRoute],
@@ -466,6 +493,11 @@ const Map = forwardRef<MapRef, MapProps>(
       if (!hospital) return;
       const url = `https://www.google.com/maps/dir/?api=1&destination=${hospital.lat},${hospital.lng}&travelmode=driving`;
       window.open(url, "_blank", "noopener,noreferrer");
+    };
+
+    const closeRoutePanel = () => {
+      clearRoutingControl();
+      setRoutePanel(defaultRoutePanel);
     };
 
     return (
@@ -479,7 +511,7 @@ const Map = forwardRef<MapRef, MapProps>(
         </div>
 
         {routePanel.hospital && (
-          <Card className="p-5 overflow-y-auto">
+          <Card className="overflow-y-auto p-5">
             <div className="flex items-start justify-between gap-3 border-b pb-4">
               <div>
                 <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
@@ -491,10 +523,7 @@ const Map = forwardRef<MapRef, MapProps>(
                 aria-label="Close route"
                 size="icon"
                 variant="ghost"
-                onClick={() => {
-                  routeLayerRef.current?.clearLayers();
-                  setRoutePanel(defaultRoutePanel);
-                }}
+                onClick={closeRoutePanel}
               >
                 <X className="h-4 w-4" />
               </Button>
@@ -516,7 +545,8 @@ const Map = forwardRef<MapRef, MapProps>(
                   )}
                   {(routePanel.hospital.trafficDelayMinutes ?? 0) > 0 && (
                     <p className="mt-2 text-xs text-muted-foreground">
-                      Includes approximately {routePanel.hospital.trafficDelayMinutes} min of live delay.
+                      Includes approximately {routePanel.hospital.trafficDelayMinutes}{" "}
+                      min of live delay.
                     </p>
                   )}
                 </div>
@@ -550,7 +580,9 @@ const Map = forwardRef<MapRef, MapProps>(
                   </div>
                   <div className="rounded-xl bg-muted/50 p-3">
                     <strong>{routePanel.roadDurationMinutes} min</strong>
-                    <p className="text-xs text-muted-foreground">No-traffic path ETA</p>
+                    <p className="text-xs text-muted-foreground">
+                      No-traffic path ETA
+                    </p>
                   </div>
                 </div>
               )}
@@ -560,9 +592,19 @@ const Map = forwardRef<MapRef, MapProps>(
                   <h4 className="mb-2 text-sm font-semibold">Route preview</h4>
                   <ol className="max-h-40 space-y-2 overflow-y-auto text-xs text-muted-foreground">
                     {routePanel.directions.map((direction, index) => (
-                      <li key={`${direction}-${index}`} className="flex gap-2">
-                        <span className="font-medium text-foreground">{index + 1}.</span>
-                        {direction}
+                      <li
+                        key={`${direction.text}-${index}`}
+                        className="flex gap-2"
+                      >
+                        <span className="font-medium text-foreground">
+                          {index + 1}.
+                        </span>
+                        <span>
+                          {direction.text}
+                          {direction.distance > 0
+                            ? ` (${direction.distance}m)`
+                            : ""}
+                        </span>
                       </li>
                     ))}
                   </ol>
@@ -575,7 +617,8 @@ const Map = forwardRef<MapRef, MapProps>(
                 <ExternalLink className="ml-2 h-3 w-3" />
               </Button>
               <p className="text-xs text-muted-foreground">
-                QuickER is decision support, not an emergency service. Call local emergency services when needed.
+                QuickER is decision support, not an emergency service. Call local
+                emergency services when needed.
               </p>
             </div>
           </Card>

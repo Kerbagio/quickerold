@@ -793,6 +793,8 @@ const translations: Record<Language, Record<string, string>> = {
     'error.mapFailed': 'Échec du chargement de la carte. Réessayez ou changez de fournisseur.',
 
     // Toasts
+    'toast.themeUpdated': 'Thème mis à jour',
+    'toast.themeChanged': 'La préférence de thème a été enregistrée',
     'toast.languageUpdated': 'Langue mise à jour',
     'toast.languageChanged': 'Langue de l\'interface changée en français.',
     'toast.emergencyTypeUpdated': 'Type d\'urgence par défaut mis à jour',

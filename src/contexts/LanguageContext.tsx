@@ -429,6 +429,12 @@ const translations: Record<Language, Record<string, string>> = {
     // Settings
     'settings.title': 'الإعدادات',
     'settings.subtitle': 'خصص تجربتك مع QuickER',
+    'settings.appearance': 'المظهر',
+    'settings.theme': 'السمة',
+    'settings.themeDesc': 'اختر مظهر السمة المفضل لديك',
+    'settings.light': 'فاتح',
+    'settings.dark': 'داكن',
+    'settings.system': 'النظام',
     'settings.language': 'اللغة',
     'settings.interfaceLanguage': 'لغة الواجهة',
     'settings.languageDesc': 'اختر لغتك المفضلة للتطبيق',
@@ -483,6 +489,8 @@ const translations: Record<Language, Record<string, string>> = {
     'error.mapFailed': 'فشل تحميل الخريطة. أعد المحاولة أو غيّر المزود.',
 
     // Toasts
+    'toast.themeUpdated': 'تم تحديث السمة',
+    'toast.themeChanged': 'تم حفظ تفضيل السمة',
     'toast.languageUpdated': 'تم تحديث اللغة',
     'toast.languageChanged': 'تم تغيير لغة الواجهة إلى العربية.',
     'toast.emergencyTypeUpdated': 'تم تحديث نوع الطوارئ الافتراضي',
@@ -725,6 +733,12 @@ const translations: Record<Language, Record<string, string>> = {
     // Settings
     'settings.title': 'Paramètres',
     'settings.subtitle': 'Personnalisez votre expérience QuickER',
+    'settings.appearance': 'Apparence',
+    'settings.theme': 'Thème',
+    'settings.themeDesc': 'Choisissez votre apparence de thème préférée',
+    'settings.light': 'Clair',
+    'settings.dark': 'Sombre',
+    'settings.system': 'Système',
     'settings.language': 'Langue',
     'settings.interfaceLanguage': 'Langue de l\'interface',
     'settings.languageDesc': 'Choisissez votre langue préférée pour l\'application',
@@ -779,6 +793,8 @@ const translations: Record<Language, Record<string, string>> = {
     'error.mapFailed': 'Échec du chargement de la carte. Réessayez ou changez de fournisseur.',
 
     // Toasts
+    'toast.themeUpdated': 'Thème mis à jour',
+    'toast.themeChanged': 'La préférence de thème a été enregistrée',
     'toast.languageUpdated': 'Langue mise à jour',
     'toast.languageChanged': 'Langue de l\'interface changée en français.',
     'toast.emergencyTypeUpdated': 'Type d\'urgence par défaut mis à jour',

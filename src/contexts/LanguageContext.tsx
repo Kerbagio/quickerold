@@ -489,6 +489,8 @@ const translations: Record<Language, Record<string, string>> = {
     'error.mapFailed': 'فشل تحميل الخريطة. أعد المحاولة أو غيّر المزود.',
 
     // Toasts
+    'toast.themeUpdated': 'تم تحديث السمة',
+    'toast.themeChanged': 'تم حفظ تفضيل السمة',
     'toast.languageUpdated': 'تم تحديث اللغة',
     'toast.languageChanged': 'تم تغيير لغة الواجهة إلى العربية.',
     'toast.emergencyTypeUpdated': 'تم تحديث نوع الطوارئ الافتراضي',

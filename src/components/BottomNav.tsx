@@ -40,8 +40,13 @@ const BottomNav = () => {
     },
   ];
 
-  // Hide bottom nav on onboarding and about pages
-  if (location.pathname === "/onboarding" || location.pathname === "/about") {
+  // Keep the first-run experience focused before showing app navigation.
+  if (
+    location.pathname === "/" ||
+    location.pathname === "/get-started" ||
+    location.pathname === "/onboarding" ||
+    location.pathname === "/about"
+  ) {
     return null;
   }
 

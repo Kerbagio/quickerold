@@ -28,9 +28,11 @@ const Header = () => {
           </nav>
           
           <div className={`flex items-center space-x-4 ${language === 'ar' ? 'space-x-reverse' : ''}`}>
-            {location.pathname !== '/' && location.pathname !== '/onboarding' && (
+            {location.pathname !== '/' &&
+              location.pathname !== '/get-started' &&
+              location.pathname !== '/onboarding' && (
               <Button variant="outline" size="sm" asChild>
-                <Link to="/onboarding">{t('btn.getStarted')}</Link>
+                <Link to="/get-started">{t('btn.getStarted')}</Link>
               </Button>
             )}
             <Button size="sm" variant="emergency" asChild>

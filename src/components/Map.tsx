@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
+import { useTheme } from "next-themes";
 import type { AvailabilityStatus } from "@/services/availability";
 import { availabilityLabel } from "@/services/availability";
 import {
@@ -109,6 +110,10 @@ const isochroneColors: Record<number, string> = {
   15: "#ef4444",
 };
 
+function tileUrl(dark: boolean): string {
+  return `https://{s}.basemaps.cartocdn.com/${dark ? "dark_all" : "light_all"}/{z}/{x}/{y}{r}.png`;
+}
+
 function directionLabel(step: {
   name?: string;
   maneuver?: { type?: string; modifier?: string };
@@ -137,6 +142,7 @@ const Map = forwardRef<MapRef, MapProps>(
     },
     ref,
   ) => {
+    const { resolvedTheme } = useTheme();
     const mapContainerRef = useRef<HTMLDivElement>(null);
     const mapRef = useRef<L.Map | null>(null);
     const userLocationRef = useRef<Coordinate | null>(null);
@@ -144,6 +150,7 @@ const Map = forwardRef<MapRef, MapProps>(
     const hospitalLayerRef = useRef<L.LayerGroup | null>(null);
     const routeLayerRef = useRef<L.LayerGroup | null>(null);
     const isochroneLayerRef = useRef<L.LayerGroup | null>(null);
+    const tileLayerRef = useRef<L.TileLayer | null>(null);
     const onLocationSelectRef = useRef(onLocationSelect);
     const onIsochroneSourceChangeRef = useRef(onIsochroneSourceChange);
     const [mapReady, setMapReady] = useState(false);
@@ -292,7 +299,8 @@ const Map = forwardRef<MapRef, MapProps>(
         [33.8938, 35.5018],
         12,
       );
-      L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png", {
+      const startsDark = document.documentElement.classList.contains("dark");
+      tileLayerRef.current = L.tileLayer(tileUrl(startsDark), {
         attribution: "&copy; OpenStreetMap contributors &copy; CARTO",
         maxZoom: 19,
       }).addTo(map);
@@ -307,8 +315,14 @@ const Map = forwardRef<MapRef, MapProps>(
       return () => {
         map.remove();
         mapRef.current = null;
+        tileLayerRef.current = null;
       };
     }, []);
+
+    useEffect(() => {
+      if (!resolvedTheme || !tileLayerRef.current) return;
+      tileLayerRef.current.setUrl(tileUrl(resolvedTheme === "dark"));
+    }, [mapReady, resolvedTheme]);
 
     useEffect(() => {
       if (!mapReady || !userLocation || !showUserLocation) return;

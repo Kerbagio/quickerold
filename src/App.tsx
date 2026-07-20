@@ -7,6 +7,7 @@ import { ThemeProvider } from "next-themes";
 import { lazy, Suspense } from "react";
 import OfflineNotice from "./components/OfflineNotice";
 import ScrollToTop from "./components/ScrollToTop";
+import RouteLoading from "./components/RouteLoading";
 
 const Index = lazy(() => import("./pages/Index"));
 const Options = lazy(() => import("./pages/Options"));
@@ -35,13 +36,7 @@ const App = () => (
         <OfflineNotice />
         <BrowserRouter basename={import.meta.env.BASE_URL}>
           <ScrollToTop />
-          <Suspense
-            fallback={
-              <div className="flex min-h-screen items-center justify-center text-sm text-muted-foreground">
-                Loading QuickER…
-              </div>
-            }
-          >
+          <Suspense fallback={<RouteLoading />}>
             <Routes>
               <Route path="/" element={<Onboarding />} />
               <Route path="/get-started" element={<Onboarding />} />

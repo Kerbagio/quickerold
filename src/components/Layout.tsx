@@ -11,7 +11,7 @@ const Layout = ({ children, showHeader = true }: LayoutProps) => {
   return (
     <div className="min-h-screen-dvh bg-background">
       {showHeader && <Header />}
-      <main className="pb-20 safe-area-bottom">
+      <main className="pb-[calc(6rem+var(--safe-bottom))]">
         {children}
       </main>
       <BottomNav />

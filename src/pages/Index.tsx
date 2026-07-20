@@ -1,10 +1,17 @@
 import { useRef } from "react";
 import { useSearchParams } from "react-router-dom";
-import { AlertCircle, Clock, MapPin, Navigation, Shield } from "lucide-react";
+import {
+  AlertCircle,
+  LoaderCircle,
+  MapPin,
+  Navigation,
+  Shield,
+} from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import Layout from "@/components/Layout";
+import LoadingState from "@/components/LoadingState";
 import Map, { type MapRef } from "@/components/Map";
 import { useToast } from "@/hooks/use-toast";
 import { useHospitals } from "@/hooks/useHospitals";
@@ -59,6 +66,7 @@ const Index = () => {
   } = useHospitals("home");
   const { t, language } = useLanguage();
   const mapRef = useRef<MapRef>(null);
+  const isInitialSearch = loading && hospitals.length === 0;
 
   const runSearch = (location: { lat: number; lng: number }) => {
     setUserLocation(location);
@@ -114,7 +122,7 @@ const Index = () => {
           language === "ar" ? "rtl" : ""
         }`}
       >
-        <Card className="border-2 bg-hero-gradient p-6 text-center sm:p-8">
+        <Card className="border-2 border-primary/20 bg-hero-gradient p-6 text-center shadow-soft sm:p-8">
           <div className="mb-5 flex justify-center">
             <div className="inline-flex items-center rounded-full bg-primary/10 px-4 py-2 text-sm font-medium text-primary">
               <Shield className="mr-2 h-4 w-4" />
@@ -156,9 +164,11 @@ const Index = () => {
           )}
 
           {loading && (
-            <div className="flex items-center justify-center text-muted-foreground">
-              <Clock className="mr-2 h-5 w-5 animate-spin" />
-              Finding hospitals and calculating road travel times…
+            <div className="flex items-center justify-center font-medium text-foreground/80">
+              <LoaderCircle className="mr-2 h-5 w-5 motion-safe:animate-spin" />
+              {hospitals.length
+                ? "Updating hospital rankings…"
+                : "Finding hospitals and calculating road travel times…"}
             </div>
           )}
 
@@ -174,7 +184,14 @@ const Index = () => {
           <strong>Emergency notice:</strong> QuickER does not dispatch ambulances or confirm clinical capability. For an urgent or life-threatening situation, call local emergency services immediately.
         </div>
 
-        {userLocation && (
+        {isInitialSearch && (
+          <LoadingState
+            title="Comparing nearby hospitals"
+            description="QuickER is checking public hospital data and calculating road travel times. Results will replace this preview when ready."
+          />
+        )}
+
+        {userLocation && !isInitialSearch && (
           <>
             <div className="flex flex-wrap items-center gap-2 text-sm">
               {routingStatus.source && (

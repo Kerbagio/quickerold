@@ -1,11 +1,12 @@
 import { useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
-import { AlertTriangle, Filter, RefreshCw } from "lucide-react";
+import { AlertTriangle, Filter, MapPin, RefreshCw } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Slider } from "@/components/ui/slider";
 import Layout from "@/components/Layout";
+import LoadingState from "@/components/LoadingState";
 import Map from "@/components/Map";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useHospitals } from "@/hooks/useHospitals";
@@ -46,6 +47,7 @@ const Options = () => {
     searchCriteria,
     specialtyFallback,
   } = useHospitals("options");
+  const isInitialSearch = loading && hospitals.length === 0;
 
   const emergencyTypes: Array<{ id: EmergencyType; label: string }> = [
     { id: "general", label: t("emergency.general") },
@@ -240,15 +242,34 @@ const Options = () => {
               : "No free isochrone key is configured. These circles are approximate and are not road travel-time boundaries."}
           </div>
 
-          <Map
-            memoryKey="options.map"
-            className="h-80 lg:h-96"
-            hospitals={hospitals}
-            userLocation={userLocation}
-            onLocationSelect={(lat, lng) => setUserLocation({ lat, lng })}
-            onIsochroneSourceChange={setIsochroneSource}
-            showIsochrones
-          />
+          {isInitialSearch ? (
+            <LoadingState
+              className="border-0 bg-muted/30 shadow-none"
+              title="Building the accessibility view"
+              description="Loading hospital candidates and reachable-area data…"
+              rows={2}
+            />
+          ) : userLocation ? (
+            <Map
+              memoryKey="options.map"
+              className="h-80 lg:h-96"
+              hospitals={hospitals}
+              userLocation={userLocation}
+              onLocationSelect={(lat, lng) => setUserLocation({ lat, lng })}
+              onIsochroneSourceChange={setIsochroneSource}
+              showIsochrones
+            />
+          ) : (
+            <div className="flex min-h-72 flex-col items-center justify-center rounded-2xl border border-dashed bg-muted/20 p-8 text-center">
+              <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+                <MapPin className="h-6 w-6" />
+              </div>
+              <p className="font-semibold">Choose a start location first</p>
+              <p className="mt-1 max-w-md text-sm text-muted-foreground">
+                The map will appear after GPS is shared or the labelled demo point is selected.
+              </p>
+            </div>
+          )}
         </Card>
 
         {(routingStatus.notice || specialtyFallback) && (

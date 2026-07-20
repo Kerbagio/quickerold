@@ -22,6 +22,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Select,
   SelectContent,
@@ -30,6 +31,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import Layout from "@/components/Layout";
+import LoadingState from "@/components/LoadingState";
 import { useHospitals } from "@/hooks/useHospitals";
 import { usePageMemory } from "@/hooks/usePageMemory";
 import { useToast } from "@/hooks/use-toast";
@@ -183,6 +185,7 @@ const Dashboard = () => {
   const acceptingHospitals = hospitals.filter(
     (hospital) => hospital.availability.status === "accepting",
   ).length;
+  const isInitialSearch = loading && hospitals.length === 0;
 
   const activityData = useMemo(() => {
     const grouped = new Map<
@@ -250,14 +253,24 @@ const Dashboard = () => {
           </Card>
           <Card className="p-5 text-center">
             <MapPin className="mx-auto mb-3 h-6 w-6 text-primary" />
-            <div className="text-3xl font-bold text-primary">{hospitals.length}</div>
+            {isInitialSearch ? (
+              <Skeleton className="mx-auto mb-1 h-9 w-14" />
+            ) : (
+              <div className="text-3xl font-bold text-primary">
+                {hospitals.length}
+              </div>
+            )}
             <p className="text-sm text-muted-foreground">Current candidates</p>
           </Card>
           <Card className="p-5 text-center">
             <Siren className="mx-auto mb-3 h-6 w-6 text-primary" />
-            <div className="text-3xl font-bold text-primary">
-              {acceptingHospitals}
-            </div>
+            {isInitialSearch ? (
+              <Skeleton className="mx-auto mb-1 h-9 w-14" />
+            ) : (
+              <div className="text-3xl font-bold text-primary">
+                {acceptingHospitals}
+              </div>
+            )}
             <p className="text-sm text-muted-foreground">Accepting in demo feed</p>
           </Card>
         </div>
@@ -316,46 +329,61 @@ const Dashboard = () => {
           </div>
 
           <div className="space-y-3">
-            {hospitals.map((hospital, index) => (
-              <div
-                key={hospital.id}
-                className="grid gap-3 rounded-xl border p-4 sm:grid-cols-[minmax(0,1fr)_auto_auto] sm:items-center"
-              >
-                <div className="min-w-0">
-                  <p className="text-xs text-muted-foreground">Rank #{index + 1}</p>
-                  <h3 className="truncate font-semibold">{hospital.name}</h3>
-                  <p className="text-sm text-muted-foreground">
-                    {hospital.eta} • {hospital.distance} • {hospital.etaSource}
-                  </p>
-                </div>
-                <Badge
-                  variant="outline"
-                  className={statusStyles[hospital.availability.status]}
-                >
-                  {availabilityLabel(hospital.availability.status)}
-                </Badge>
-                <Select
-                  value={hospital.availability.status}
-                  onValueChange={(value: AvailabilityStatus) =>
-                    updateStatus(hospital.id, value)
-                  }
-                >
-                  <SelectTrigger className="w-full sm:w-40">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="accepting">Accepting</SelectItem>
-                    <SelectItem value="limited">Limited</SelectItem>
-                    <SelectItem value="diverting">Diverting</SelectItem>
-                    <SelectItem value="unknown">Unknown</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            ))}
-            {!hospitals.length && (
-              <div className="rounded-xl bg-muted/40 p-8 text-center text-muted-foreground">
-                No current hospital data.
-              </div>
+            {isInitialSearch ? (
+              <LoadingState
+                className="border-0 bg-muted/30 shadow-none"
+                title="Loading ranked facilities"
+                description="Calculating the current hospital order and availability labels…"
+              />
+            ) : (
+              <>
+                {hospitals.map((hospital, index) => (
+                  <div
+                    key={hospital.id}
+                    className="grid gap-3 rounded-xl border p-4 sm:grid-cols-[minmax(0,1fr)_auto_auto] sm:items-center"
+                  >
+                    <div className="min-w-0">
+                      <p className="text-xs text-muted-foreground">
+                        Rank #{index + 1}
+                      </p>
+                      <h3 className="truncate font-semibold">
+                        {hospital.name}
+                      </h3>
+                      <p className="text-sm text-muted-foreground">
+                        {hospital.eta} • {hospital.distance} •{" "}
+                        {hospital.etaSource}
+                      </p>
+                    </div>
+                    <Badge
+                      variant="outline"
+                      className={statusStyles[hospital.availability.status]}
+                    >
+                      {availabilityLabel(hospital.availability.status)}
+                    </Badge>
+                    <Select
+                      value={hospital.availability.status}
+                      onValueChange={(value: AvailabilityStatus) =>
+                        updateStatus(hospital.id, value)
+                      }
+                    >
+                      <SelectTrigger className="w-full sm:w-40">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="accepting">Accepting</SelectItem>
+                        <SelectItem value="limited">Limited</SelectItem>
+                        <SelectItem value="diverting">Diverting</SelectItem>
+                        <SelectItem value="unknown">Unknown</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                ))}
+                {!hospitals.length && (
+                  <div className="rounded-xl bg-muted/40 p-8 text-center text-muted-foreground">
+                    No current hospital data.
+                  </div>
+                )}
+              </>
             )}
           </div>
         </Card>

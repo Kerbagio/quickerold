@@ -34,7 +34,7 @@ const OfflineNotice = () => {
   if (!showOfflineBanner) return null;
 
   return (
-    <Card className="fixed top-4 left-4 right-4 z-50 p-4 bg-warning text-warning-foreground border-warning shadow-lg">
+    <Card className="fixed left-4 right-4 top-4 z-[3000] border-warning bg-warning p-4 text-warning-foreground shadow-lg">
       <div className="flex items-center justify-center">
         <WifiOff className="w-5 h-5 mr-2" />
         <span className="font-medium">

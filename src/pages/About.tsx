@@ -12,6 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { useLanguage } from "@/contexts/LanguageContext";
+import Layout from "@/components/Layout";
 
 const About = () => {
   const { language } = useLanguage();
@@ -42,24 +43,18 @@ const About = () => {
   ];
 
   return (
-    <div className={`min-h-screen bg-background ${language === "ar" ? "rtl" : ""}`}>
-      <header className="border-b bg-background">
-        <div className="container mx-auto flex items-center justify-between px-4 py-4 sm:px-6">
-          <Button variant="ghost" asChild>
-            <Link to="/home">
-              <ArrowLeft className="mr-2 h-4 w-4" /> Back to Home
-            </Link>
-          </Button>
-          <img
-            src={`${import.meta.env.BASE_URL}logo-quicker.svg`}
-            alt="QuickER"
-            className="h-8 w-auto"
-          />
-          <div className="w-28" />
-        </div>
-      </header>
+    <Layout>
+      <main
+        className={`container mx-auto max-w-4xl space-y-8 px-4 py-10 sm:px-6 ${
+          language === "ar" ? "rtl" : ""
+        }`}
+      >
+        <Button variant="ghost" asChild>
+          <Link to="/home">
+            <ArrowLeft className="mr-2 h-4 w-4" /> Back to Home
+          </Link>
+        </Button>
 
-      <main className="container mx-auto max-w-4xl space-y-8 px-4 py-10 sm:px-6">
         <div className="text-center">
           <Badge className="mb-4" variant="secondary">
             Free-first emergency access project
@@ -165,7 +160,7 @@ const About = () => {
           </ul>
         </Card>
       </main>
-    </div>
+    </Layout>
   );
 };
 

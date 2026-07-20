@@ -1,4 +1,4 @@
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import {
   AlertCircle,
   Clock3,
@@ -46,6 +46,37 @@ const availabilityStyles: Record<AvailabilityStatus, string> = {
   unknown: "text-muted-foreground",
 };
 
+const BEIRUT_DEMO_LOCATION = { lat: 33.8938, lng: 35.5018 };
+type LocationSource = "gps" | "demo";
+
+function readBrowserPosition(
+  options: PositionOptions,
+): Promise<GeolocationPosition> {
+  return new Promise((resolve, reject) => {
+    navigator.geolocation.getCurrentPosition(resolve, reject, options);
+  });
+}
+
+async function getCurrentBrowserPosition(): Promise<GeolocationPosition> {
+  try {
+    return await readBrowserPosition({
+      enableHighAccuracy: false,
+      timeout: 8_000,
+      maximumAge: 120_000,
+    });
+  } catch (error) {
+    if ((error as GeolocationPositionError | undefined)?.code === 1) {
+      throw error;
+    }
+
+    return readBrowserPosition({
+      enableHighAccuracy: true,
+      timeout: 12_000,
+      maximumAge: 0,
+    });
+  }
+}
+
 const Index = () => {
   const [selectedType, setSelectedType] = usePageMemory<EmergencyType>(
     "home.emergencyType",
@@ -60,6 +91,9 @@ const Index = () => {
     "home.permissionDenied",
     false,
   );
+  const [locationSource, setLocationSource] =
+    usePageMemory<LocationSource | null>("home.locationSource", null);
+  const [locating, setLocating] = useState(false);
   const { toast } = useToast();
   const {
     hospitals,
@@ -71,10 +105,11 @@ const Index = () => {
     specialtyFallback,
     searchCriteria,
   } = useHospitals("home");
-  const { t, language } = useLanguage();
+  const { language } = useLanguage();
   const mapRef = useRef<MapRef>(null);
   const mapSectionRef = useRef<HTMLDivElement>(null);
   const isInitialSearch = loading && hospitals.length === 0;
+  const isSearchBusy = locating || loading;
   const activeEmergencyType = searchCriteria?.emergencyType ?? selectedType;
   const decisionEvidence = buildDecisionEvidence(hospitals);
   const decisionRecord: DecisionRecord | null =
@@ -104,16 +139,20 @@ const Index = () => {
     { id: "maternity", label: emergencyTypeLabel("maternity") },
   ];
 
-  const runSearch = (location: { lat: number; lng: number }) => {
+  const runSearch = async (
+    location: { lat: number; lng: number },
+    source: LocationSource,
+  ) => {
     setUserLocation(location);
+    setLocationSource(source);
     setPermissionDenied(false);
-    void fetchHospitals(location.lat, location.lng, {
+    await fetchHospitals(location.lat, location.lng, {
       radius: 8,
       emergencyType: selectedType,
     });
   };
 
-  const requestLocation = () => {
+  const requestLocation = async () => {
     if (!navigator.geolocation) {
       setPermissionDenied(true);
       toast({
@@ -125,24 +164,55 @@ const Index = () => {
       return;
     }
 
-    navigator.geolocation.getCurrentPosition(
-      (position) =>
-        runSearch({
+    setLocating(true);
+    try {
+      const position = await getCurrentBrowserPosition();
+      setLocating(false);
+      await runSearch(
+        {
           lat: position.coords.latitude,
           lng: position.coords.longitude,
-        }),
-      () => {
-        setPermissionDenied(true);
-        toast({
-          title: "Location permission denied",
-          description:
-            "Enable browser location or use the demo start point for the presentation.",
-          variant: "destructive",
-        });
-      },
-      { enableHighAccuracy: true, timeout: 10000, maximumAge: 30000 },
-    );
+        },
+        "gps",
+      );
+    } catch {
+      setPermissionDenied(true);
+      toast({
+        title: "Current location unavailable",
+        description:
+          "Allow browser location and try again, or use the clearly labelled Beirut demo point.",
+        variant: "destructive",
+      });
+    } finally {
+      setLocating(false);
+    }
   };
+
+  const handleHospitalSearch = async () => {
+    if (isSearchBusy) return;
+
+    if (userLocation) {
+      await runSearch(userLocation, locationSource ?? "gps");
+      return;
+    }
+
+    await requestLocation();
+  };
+
+  const facilityLabel = emergencyTypeLabel(selectedType);
+  const searchButtonLabel = locating
+    ? "Getting your current location…"
+    : loading
+      ? hospitals.length
+        ? "Updating hospital rankings…"
+        : "Finding hospitals and calculating ETAs…"
+      : error
+        ? "Try hospital search again"
+        : userLocation
+          ? `Refresh ${
+              locationSource === "demo" ? "demo " : ""
+            }${facilityLabel} results`
+          : `Find fastest ${facilityLabel} near me`;
 
   const showHospitalRoute = (hospital: (typeof hospitals)[number]) => {
     mapRef.current?.showRoutes(hospital.lat, hospital.lng, hospital.name);
@@ -203,50 +273,50 @@ const Index = () => {
             </p>
           </div>
 
-          {!userLocation && !loading && (
-            <div className="flex flex-col items-center justify-center gap-3 sm:flex-row">
-              <Button
-                size="lg"
-                onClick={requestLocation}
-                className="px-8 py-6 text-lg shadow-emergency"
-              >
-                <MapPin className="mr-2 h-5 w-5" />
-                {t("btn.shareLocation")}
-              </Button>
-              <Button
-                size="lg"
-                variant="outline"
-                onClick={() => runSearch({ lat: 33.8938, lng: 35.5018 })}
-              >
-                Use Beirut demo point
-              </Button>
-            </div>
-          )}
-
-          {userLocation && !loading && (
-            <div className="flex flex-col items-center justify-center gap-3 sm:flex-row">
-              <Button
-                size="lg"
-                onClick={() => runSearch(userLocation)}
-                className="shadow-emergency"
-              >
+          <div className="flex flex-col items-center justify-center">
+            <Button
+              size="lg"
+              disabled={isSearchBusy}
+              aria-busy={isSearchBusy}
+              onClick={() => void handleHospitalSearch()}
+              className="min-w-72 px-8 py-6 text-base shadow-emergency sm:text-lg"
+            >
+              {isSearchBusy ? (
+                <LoaderCircle className="mr-2 h-5 w-5 motion-safe:animate-spin" />
+              ) : userLocation ? (
                 <RefreshCw className="mr-2 h-5 w-5" />
-                Update {emergencyTypeLabel(selectedType)} ranking
-              </Button>
-              <Button size="lg" variant="outline" onClick={requestLocation}>
-                <MapPin className="mr-2 h-5 w-5" /> Use current GPS
-              </Button>
-            </div>
-          )}
+              ) : (
+                <MapPin className="mr-2 h-5 w-5" />
+              )}
+              {searchButtonLabel}
+            </Button>
 
-          {loading && (
-            <div className="flex items-center justify-center font-medium text-foreground/80">
-              <LoaderCircle className="mr-2 h-5 w-5 motion-safe:animate-spin" />
-              {hospitals.length
-                ? "Updating hospital rankings…"
-                : "Finding hospitals and calculating road travel times…"}
-            </div>
-          )}
+            {!userLocation && !isSearchBusy ? (
+              <button
+                type="button"
+                className="mt-3 text-sm font-medium text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+                onClick={() =>
+                  void runSearch(BEIRUT_DEMO_LOCATION, "demo")
+                }
+              >
+                Presenting without GPS? Use the labelled Beirut demo point
+              </button>
+            ) : null}
+
+            {locationSource === "demo" && userLocation && !isSearchBusy ? (
+              <div className="mt-4 rounded-xl border border-warning/40 bg-warning/10 px-4 py-3 text-sm">
+                <strong>Demo location active:</strong> results use central
+                Beirut, not your GPS.{" "}
+                <button
+                  type="button"
+                  className="font-semibold underline underline-offset-4"
+                  onClick={() => void requestLocation()}
+                >
+                  Switch to current GPS
+                </button>
+              </div>
+            ) : null}
+          </div>
 
           {permissionDenied && !userLocation && (
             <div className="mx-auto mt-4 flex max-w-xl items-center justify-center rounded-xl bg-destructive/10 p-4 text-destructive">
@@ -451,9 +521,10 @@ const Index = () => {
             <AlertCircle className="mx-auto mb-4 h-12 w-12 text-destructive" />
             <h3 className="mb-2 text-lg font-semibold">Search unavailable</h3>
             <p className="text-muted-foreground">{error}</p>
-            <Button className="mt-4" variant="outline" onClick={requestLocation}>
-              Try again
-            </Button>
+            <p className="mt-3 text-sm text-muted-foreground">
+              Use the single search button above to try again. Your facility
+              type and location are preserved.
+            </p>
           </Card>
         )}
       </div>

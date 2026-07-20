@@ -60,6 +60,48 @@ async function fetchWithTimeout(
   }
 }
 
+function firstSuccessful<T>(requests: Promise<T>[]): Promise<T> {
+  return new Promise((resolve, reject) => {
+    let failedRequests = 0;
+
+    requests.forEach((request) => {
+      request.then(resolve).catch(() => {
+        failedRequests += 1;
+        if (failedRequests === requests.length) {
+          reject(new Error("All hospital-data providers failed"));
+        }
+      });
+    });
+  });
+}
+
+async function fetchHospitalsFromProvider(
+  endpoint: string,
+  query: string,
+): Promise<OSMHospital[]> {
+  const res = await fetchWithTimeout(endpoint, query);
+  if (!res.ok) throw new Error(`Provider returned ${res.status}`);
+
+  const data = (await res.json()) as OverpassResponse;
+  const hospitals: OSMHospital[] = (data.elements ?? []).flatMap((el) => {
+    const center = el.type === "node" ? { lat: el.lat, lon: el.lon } : el.center;
+    if (!center || center.lat == null || center.lon == null) return [];
+    return [
+      {
+        id: `${el.type}-${el.id}`,
+        name: el.tags?.name || "Unnamed Hospital",
+        lat: center.lat,
+        lng: center.lon,
+        tags: el.tags || {},
+      } satisfies OSMHospital,
+    ];
+  });
+
+  return [
+    ...new Map(hospitals.map((hospital) => [hospital.id, hospital])).values(),
+  ];
+}
+
 async function loadHospitalsFromProviders(
   lat: number,
   lng: number,
@@ -79,35 +121,17 @@ async function loadHospitalsFromProviders(
     "https://overpass-api.de/api/interpreter",
   ];
 
-  for (const endpoint of endpoints) {
+  for (let attempt = 0; attempt < 2; attempt += 1) {
     try {
-      const res = await fetchWithTimeout(endpoint, query);
-      if (!res.ok) continue;
-
-      const data = (await res.json()) as OverpassResponse;
-      const elements = data.elements ?? [];
-      const hospitals: OSMHospital[] = elements.flatMap((el) => {
-        const center =
-          el.type === "node" ? { lat: el.lat, lon: el.lon } : el.center;
-        if (!center || center.lat == null || center.lon == null) return [];
-        return [
-          {
-            id: `${el.type}-${el.id}`,
-            name: el.tags?.name || "Unnamed Hospital",
-            lat: center.lat,
-            lng: center.lon,
-            tags: el.tags || {},
-          } satisfies OSMHospital,
-        ];
-      });
-
-      return [
-        ...new Map(
-          hospitals.map((hospital) => [hospital.id, hospital]),
-        ).values(),
-      ];
+      return await firstSuccessful(
+        endpoints.map((endpoint) =>
+          fetchHospitalsFromProvider(endpoint, query),
+        ),
+      );
     } catch {
-      // A provider may be congested or offline; continue to the bounded fallback.
+      if (attempt === 0) {
+        await new Promise((resolve) => globalThis.setTimeout(resolve, 300));
+      }
     }
   }
 

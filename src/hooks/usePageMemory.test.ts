@@ -15,21 +15,21 @@ describe("page memory", () => {
   });
 
   it("supports functional state updates", () => {
-    readPageMemory("agent.count", 1);
+    readPageMemory("scenario.count", 1);
 
-    expect(writePageMemory<number>("agent.count", (value) => value + 1)).toBe(
+    expect(writePageMemory<number>("scenario.count", (value) => value + 1)).toBe(
       2,
     );
-    expect(readPageMemory("agent.count", 0)).toBe(2);
+    expect(readPageMemory("scenario.count", 0)).toBe(2);
   });
 
   it("can clear one page namespace without clearing other pages", () => {
     readPageMemory("home.location", { lat: 1, lng: 2 });
-    readPageMemory("agent.messages", ["hello"]);
+    readPageMemory("scenario.filters", ["general"]);
 
     clearPageMemory("home.");
 
     expect(readPageMemory("home.location", null)).toBeNull();
-    expect(readPageMemory("agent.messages", [])).toEqual(["hello"]);
+    expect(readPageMemory("scenario.filters", [])).toEqual(["general"]);
   });
 });

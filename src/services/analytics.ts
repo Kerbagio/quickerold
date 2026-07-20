@@ -1,4 +1,5 @@
 import type { AvailabilityStatus } from "@/services/availability";
+import type { DecisionReason } from "@/services/decisionEvidence";
 import type { EtaSource } from "@/services/routing";
 
 export interface DecisionRecord {
@@ -9,6 +10,14 @@ export interface DecisionRecord {
   etaMinutes: number;
   etaSource: EtaSource;
   availability: AvailabilityStatus;
+  nearestHospital?: string;
+  nearestEtaMinutes?: number;
+  nearestDistanceKm?: number;
+  fastestHospital?: string;
+  fastestEtaMinutes?: number;
+  recommendedDistanceKm?: number;
+  timeDeltaVsNearest?: number;
+  selectionReason?: DecisionReason;
 }
 
 const STORAGE_KEY = "quicker.decisionHistory.v1";

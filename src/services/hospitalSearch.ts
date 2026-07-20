@@ -8,6 +8,7 @@ import {
   normalizeEmergencyType,
   type EmergencyType,
 } from "@/services/emergency";
+import { buildDecisionEvidence } from "@/services/decisionEvidence";
 import {
   type OSMHospital,
   fetchHospitalsFromOSM,
@@ -215,6 +216,7 @@ export async function searchHospitals(
   const hospitals = sortForDispatch(enriched);
   const bestOption = hospitals[0];
   if (!bestOption) throw new HospitalSearchError("no-routes");
+  const evidence = buildDecisionEvidence(hospitals);
 
   recordDecision({
     timestamp: new Date().toISOString(),
@@ -224,6 +226,14 @@ export async function searchHospitals(
     etaMinutes: bestOption.etaMinutes,
     etaSource: bestOption.etaSource,
     availability: bestOption.availability.status,
+    nearestHospital: evidence?.nearestByDistance.name,
+    nearestEtaMinutes: evidence?.nearestByDistance.etaMinutes,
+    nearestDistanceKm: evidence?.nearestByDistance.distanceKm,
+    fastestHospital: evidence?.fastestByEta.name,
+    fastestEtaMinutes: evidence?.fastestByEta.etaMinutes,
+    recommendedDistanceKm: bestOption.distanceKm,
+    timeDeltaVsNearest: evidence?.timeDeltaVsNearest,
+    selectionReason: evidence?.reason,
   });
 
   return {

@@ -75,6 +75,7 @@ const translations: Record<Language, Record<string, string>> = {
     // Bottom Navigation
     'nav.home': 'Home',
     'nav.options': 'Options',
+    'nav.scenario': 'Scenario',
 
     // Hero Section
     'hero.title': 'Find the fastest hospital now',
@@ -378,6 +379,7 @@ const translations: Record<Language, Record<string, string>> = {
     // Bottom Navigation
     'nav.home': 'الرئيسية',
     'nav.options': 'الخيارات',
+    'nav.scenario': 'المحاكاة',
 
     // Hero Section
     'hero.title': 'اعثر على أسرع مستشفى الآن',
@@ -673,6 +675,7 @@ const translations: Record<Language, Record<string, string>> = {
     // Bottom Navigation
     'nav.home': 'Accueil',
     'nav.options': 'Options',
+    'nav.scenario': 'Scénario',
 
     // Hero Section
     'hero.title': 'Trouvez l\'hôpital le plus rapide maintenant',
@@ -684,7 +687,7 @@ const translations: Record<Language, Record<string, string>> = {
     'hero.noHospitals': 'Aucun hôpital trouvé à proximité. Élargissez votre rayon de recherche dans les Options.',
 
     // Metrics
-    'metrics.eta': 'HPA',
+    'metrics.eta': 'ETA',
     'metrics.distance': 'km',
     'metrics.lowTraffic': 'Trafic fluide',
     'metrics.moderateTraffic': 'Trafic modéré',
@@ -710,7 +713,7 @@ const translations: Record<Language, Record<string, string>> = {
     // Dashboard
     'dashboard.title': 'Insights d\'accès aux urgences',
     'dashboard.subtitle': 'Temps moyen pour atteindre un hôpital, basé sur les données récentes',
-    'dashboard.avgETA': 'HPA moyenne de la ville',
+    'dashboard.avgETA': 'ETA moyenne de la ville',
     'dashboard.peakHour': 'Heure de pointe',
     'dashboard.bestHour': 'Meilleure heure',
     'dashboard.noData': 'Les données apparaîtront lorsque vous utiliserez l\'application ou après l\'initialisation des données échantillons.',
@@ -744,7 +747,7 @@ const translations: Record<Language, Record<string, string>> = {
     'settings.copyright': '© 2026 Prototype QuickER pour hackathon.',
 
     // Onboarding
-    'onboarding.slide1.title': 'Hôpital le plus rapide par HPA',
+    'onboarding.slide1.title': 'L\'hôpital adapté le plus rapide',
     'onboarding.slide1.desc': 'Comparez les hôpitaux par temps routier, avec le trafic en direct seulement si le fournisseur gratuit est disponible.',
     'onboarding.slide2.title': 'Filtres d\'urgence',
     'onboarding.slide2.desc': 'Filtrez les métadonnées publiques par type de soins, puis confirmez les services avec l\'établissement.',
@@ -827,7 +830,7 @@ const translations: Record<Language, Record<string, string>> = {
     'dashboard.exportData': 'Exporter les données',
     'dashboard.generateSample': 'Lancer la démo de réacheminement',
     'dashboard.last7Days': '7 derniers jours',
-    'dashboard.avgETAByHour': 'HPA moyenne par',
+    'dashboard.avgETAByHour': 'ETA moyenne par',
 
     // Emergency Countries
     'emergency.countries.us': 'États-Unis',

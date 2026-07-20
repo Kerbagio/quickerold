@@ -12,7 +12,6 @@ import RouteLoading from "./components/RouteLoading";
 const Index = lazy(() => import("./pages/Index"));
 const Options = lazy(() => import("./pages/Options"));
 const Dashboard = lazy(() => import("./pages/Dashboard"));
-const HealthAssistant = lazy(() => import("./pages/HealthAssistant"));
 const Onboarding = lazy(() => import("./pages/Onboarding"));
 const Settings = lazy(() => import("./pages/Settings"));
 const About = lazy(() => import("./pages/About"));
@@ -43,7 +42,6 @@ const App = () => (
               <Route path="/home" element={<Index />} />
               <Route path="/options" element={<Options />} />
               <Route path="/dashboard" element={<Dashboard />} />
-              <Route path="/health-assistant" element={<HealthAssistant />} />
               <Route path="/onboarding" element={<Onboarding />} />
               <Route path="/settings" element={<Settings />} />
               <Route path="/about" element={<About />} />

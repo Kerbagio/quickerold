@@ -1,11 +1,12 @@
 import { useNavigate } from "react-router-dom";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Switch } from "@/components/ui/switch";
-import { MapPin, Shield, Globe, ChevronRight, ChevronLeft } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { MapPin, Shield, Globe, ChevronRight, ChevronLeft, Route, Sparkles } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { usePageMemory } from "@/hooks/usePageMemory";
 import { useLanguage } from "@/contexts/LanguageContext";
+import BrandLogo from "@/components/BrandLogo";
 
 const Onboarding = () => {
   const [currentSlide, setCurrentSlide] = usePageMemory(
@@ -22,7 +23,7 @@ const Onboarding = () => {
 
   const slides = [
     {
-      icon: MapPin,
+      icon: Route,
       title: t('onboarding.slide1.title'),
       description: t('onboarding.slide1.desc'),
       gradient: "bg-gradient-to-br from-primary/10 to-accent/10"
@@ -103,39 +104,57 @@ const Onboarding = () => {
   const currentSlideData = slides[currentSlide];
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-6">
-      <div className="max-w-md w-full">
-        <Card className={`p-8 text-center ${currentSlideData.gradient} border-2`}>
+    <main
+      className={`relative flex min-h-screen-dvh items-center justify-center overflow-hidden bg-background px-4 py-8 sm:px-6 ${
+        language === "ar" ? "rtl" : ""
+      }`}
+    >
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-72 bg-gradient-to-b from-primary/10 to-transparent" />
+      <div className="relative w-full max-w-lg">
+        <div className="mb-6 flex items-center justify-between gap-4 px-1">
+          <BrandLogo className="h-10" />
+          <Badge variant="outline" className="border-primary/25 bg-background/80 text-primary">
+            <Sparkles className="mr-1.5 h-3.5 w-3.5" /> Free-first
+          </Badge>
+        </div>
+        <Card className={`overflow-hidden border p-0 text-center shadow-strong ${currentSlideData.gradient}`}>
+          <div className="border-b bg-background/75 px-6 py-4 backdrop-blur">
+            <div className="mb-2 flex items-center justify-between text-xs font-medium text-muted-foreground">
+              <span>QuickER setup</span>
+              <span>{currentSlide + 1} / {slides.length}</span>
+            </div>
           {/* Progress Indicator */}
-          <div className="flex justify-center mb-8">
+          <div className="flex gap-2" aria-label={`Step ${currentSlide + 1} of ${slides.length}`}>
             {slides.map((_, index) => (
               <div
                 key={index}
-                className={`w-2 h-2 rounded-full mx-1 transition-colors ${
-                  index === currentSlide ? 'bg-primary' : 'bg-muted'
+                className={`h-1.5 flex-1 rounded-full transition-colors ${
+                  index <= currentSlide ? 'bg-primary' : 'bg-muted'
                 }`}
               />
             ))}
           </div>
+          </div>
 
           {/* Slide Content */}
-          <div className="mb-8">
-            <div className="flex items-center justify-center w-16 h-16 bg-primary/10 rounded-xl mx-auto mb-6">
-              <currentSlideData.icon className="w-8 h-8 text-primary" />
+          <div className="px-6 py-9 sm:px-9">
+            <div className="mb-7">
+            <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-3xl border border-primary/20 bg-background/80 shadow-soft">
+              <currentSlideData.icon className="h-9 w-9 text-primary" />
             </div>
             
-            <h1 className="text-2xl font-bold text-foreground mb-4">
+            <h1 className="mb-4 text-2xl font-bold text-foreground sm:text-3xl">
               {currentSlideData.title}
             </h1>
             
-            <p className="text-muted-foreground leading-relaxed">
+            <p className="mx-auto max-w-md leading-relaxed text-muted-foreground">
               {currentSlideData.description}
             </p>
           </div>
 
           {/* Controls for Location Slide */}
           {currentSlide === 3 && (
-            <div className="mb-8">
+            <div className="mb-8 rounded-2xl border bg-background/70 p-4">
               <Button 
                 onClick={enableLocation}
                 variant={locationEnabled ? "success" : "default"}
@@ -151,7 +170,7 @@ const Onboarding = () => {
 
           {/* Controls for Language Slide */}
           {currentSlide === 4 && (
-            <div className="mb-8 space-y-4">
+            <div className="mb-8 space-y-4 rounded-2xl border bg-background/70 p-4">
               <div className="text-center mb-6">
                 <Globe className="w-8 h-8 text-primary mx-auto mb-2" />
                 <span className="font-medium text-lg">{t('onboarding.selectLanguage')}</span>
@@ -189,7 +208,7 @@ const Onboarding = () => {
           )}
 
           {/* Navigation */}
-          <div className="flex justify-between items-center">
+          <div className="flex items-center justify-between border-t border-border/60 pt-5">
             <Button
               variant="ghost"
               onClick={prevSlide}
@@ -212,10 +231,11 @@ const Onboarding = () => {
               </Button>
             )}
           </div>
+          </div>
         </Card>
 
         {/* Legal Notice */}
-        <div className="text-center mt-6 text-xs text-muted-foreground">
+        <div className="mt-5 text-center text-xs leading-relaxed text-muted-foreground">
           <p>
             {t('onboarding.privacyNotice')}
           </p>
@@ -224,7 +244,7 @@ const Onboarding = () => {
           </p>
         </div>
       </div>
-    </div>
+    </main>
   );
 };
 

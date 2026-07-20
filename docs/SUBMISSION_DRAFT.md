@@ -6,7 +6,7 @@ Copy these answers into the hackathon form after checking the project links and 
 
 **Project name:** QuickER — Fastest Suitable Hospital Routing
 
-**One-line pitch:** A free-first decision-support app that ranks nearby hospitals by suitable road ETA and clearly labelled availability status, then explains its recommendation.
+**One-line pitch:** A free-first decision-support app that proves which suitable hospital is fastest by road ETA, reroutes around availability changes, and explains the verified choice on-device.
 
 **GitHub:** https://github.com/Kerbagio/quickerold
 
@@ -26,7 +26,7 @@ QuickER is a free-first web prototype that ranks nearby hospitals by available r
 
 ## How You Built It — minimum 40 words
 
-I built QuickER with React, TypeScript, Leaflet, OpenStreetMap Overpass, and OSRM for the no-key core. A deterministic decision engine applies specialty metadata, availability tiers, and ETA before drawing the selected route. The typed dispatch agent executes GPS, hospital discovery, adaptive-radius search, ETA ranking, and result-verification tools, then returns the best option and alternatives directly in chat. Transformers.js runs an open FLAN-T5 model on-device to refine eligible explanations. Output validation and an immediate deterministic fallback keep routing operational if the model or a public service is unavailable.
+I built QuickER with React, TypeScript, Leaflet, OpenStreetMap Overpass, and OSRM for the no-key core. A deterministic decision engine applies specialty metadata, availability tiers, and road ETA before drawing the selected route. A decision-evidence layer compares the closest route, fastest ETA, and fastest suitable option so the result is auditable. A Scenario Lab reruns that pipeline after a clearly labelled simulated availability change. Transformers.js runs an open FLAN-T5 model on-device to explain only the verified, non-location routing facts. Validation and an immediate deterministic fallback prevent the model from changing the result or adding unsupported claims.
 
 ## Who Benefits — minimum 20 words
 
@@ -51,7 +51,8 @@ The deployed core uses GitHub Pages, OpenStreetMap data, public OSRM routing, lo
 - “Fastest suitable option by the best available road ETA.”
 - “Real public hospital map records.”
 - “Availability is simulated for this prototype.”
-- “The typed agent executes hospital-search and ETA-ranking tools, while on-device AI can explain the structured decision but cannot change it.”
+- “The routing engine decides; on-device AI explains the verified result but cannot change it.”
+- “The Scenario Lab reruns the real ranking pipeline with a clearly labelled simulated availability feed.”
 - “The core has a $0 deployment path with no billing.”
 - “Free public services have limits, and every fallback is labelled.”
 

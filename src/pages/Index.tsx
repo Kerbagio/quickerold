@@ -1,15 +1,18 @@
 import { useRef } from "react";
-import { useSearchParams } from "react-router-dom";
 import {
   AlertCircle,
+  Clock3,
   LoaderCircle,
   MapPin,
   Navigation,
+  RefreshCw,
   Shield,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import AIDecisionBrief from "@/components/AIDecisionBrief";
+import DecisionEvidenceCard from "@/components/DecisionEvidenceCard";
 import Layout from "@/components/Layout";
 import LoadingState from "@/components/LoadingState";
 import Map, { type MapRef } from "@/components/Map";
@@ -24,9 +27,11 @@ import {
 import type { EtaSource } from "@/services/routing";
 import {
   emergencyTypeLabel,
-  isEmergencyType,
   normalizeEmergencyType,
+  type EmergencyType,
 } from "@/services/emergency";
+import { buildDecisionEvidence } from "@/services/decisionEvidence";
+import type { DecisionRecord } from "@/services/analytics";
 
 const sourceLabels: Record<EtaSource, string> = {
   "live-traffic": "Live traffic",
@@ -42,10 +47,11 @@ const availabilityStyles: Record<AvailabilityStatus, string> = {
 };
 
 const Index = () => {
-  const [searchParams] = useSearchParams();
-  const requestedEmergency = searchParams.get("emergencyType");
-  const hasAgentEmergencyRequest = isEmergencyType(requestedEmergency);
-  const agentEmergencyType = normalizeEmergencyType(requestedEmergency);
+  const [selectedType, setSelectedType] = usePageMemory<EmergencyType>(
+    "home.emergencyType",
+    () =>
+      normalizeEmergencyType(localStorage.getItem("defaultEmergencyType")),
+  );
   const [userLocation, setUserLocation] = usePageMemory<{
     lat: number;
     lng: number;
@@ -63,20 +69,47 @@ const Index = () => {
     bestOption,
     routingStatus,
     specialtyFallback,
+    searchCriteria,
   } = useHospitals("home");
   const { t, language } = useLanguage();
   const mapRef = useRef<MapRef>(null);
+  const mapSectionRef = useRef<HTMLDivElement>(null);
   const isInitialSearch = loading && hospitals.length === 0;
+  const activeEmergencyType = searchCriteria?.emergencyType ?? selectedType;
+  const decisionEvidence = buildDecisionEvidence(hospitals);
+  const decisionRecord: DecisionRecord | null =
+    bestOption && decisionEvidence
+      ? {
+          timestamp: routingStatus.generatedAt ?? "current-search",
+          emergencyType: activeEmergencyType,
+          candidateCount: hospitals.length,
+          recommendedHospital: bestOption.name,
+          etaMinutes: bestOption.etaMinutes,
+          etaSource: bestOption.etaSource,
+          availability: bestOption.availability.status,
+          nearestHospital: decisionEvidence.nearestByDistance.name,
+          nearestEtaMinutes: decisionEvidence.nearestByDistance.etaMinutes,
+          nearestDistanceKm: decisionEvidence.nearestByDistance.distanceKm,
+          fastestHospital: decisionEvidence.fastestByEta.name,
+          fastestEtaMinutes: decisionEvidence.fastestByEta.etaMinutes,
+          recommendedDistanceKm: bestOption.distanceKm,
+          timeDeltaVsNearest: decisionEvidence.timeDeltaVsNearest,
+          selectionReason: decisionEvidence.reason,
+        }
+      : null;
+  const emergencyTypes: Array<{ id: EmergencyType; label: string }> = [
+    { id: "general", label: emergencyTypeLabel("general") },
+    { id: "cardiac", label: emergencyTypeLabel("cardiac") },
+    { id: "pediatric", label: emergencyTypeLabel("pediatric") },
+    { id: "maternity", label: emergencyTypeLabel("maternity") },
+  ];
 
   const runSearch = (location: { lat: number; lng: number }) => {
     setUserLocation(location);
     setPermissionDenied(false);
     void fetchHospitals(location.lat, location.lng, {
       radius: 8,
-      emergencyType:
-        hasAgentEmergencyRequest
-          ? agentEmergencyType
-          : localStorage.getItem("defaultEmergencyType") ?? "general",
+      emergencyType: selectedType,
     });
   };
 
@@ -113,6 +146,12 @@ const Index = () => {
 
   const showHospitalRoute = (hospital: (typeof hospitals)[number]) => {
     mapRef.current?.showRoutes(hospital.lat, hospital.lng, hospital.name);
+    window.requestAnimationFrame(() => {
+      mapSectionRef.current?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    });
   };
 
   return (
@@ -137,11 +176,32 @@ const Index = () => {
             Share your location to compare road travel times. Live traffic is used only when the free provider is available.
           </p>
 
-          {hasAgentEmergencyRequest ? (
-            <Badge variant="outline" className="mb-5 bg-background/70">
-              Agent task • {emergencyTypeLabel(agentEmergencyType)} search
-            </Badge>
-          ) : null}
+          <div className="mx-auto mb-6 max-w-2xl">
+            <p className="mb-3 text-sm font-semibold text-foreground">
+              Which facility capability should QuickER look for?
+            </p>
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+              {emergencyTypes.map((type) => (
+                <Button
+                  key={type.id}
+                  type="button"
+                  size="sm"
+                  variant={selectedType === type.id ? "default" : "outline"}
+                  className={
+                    selectedType === type.id
+                      ? "shadow-emergency"
+                      : "bg-background/70"
+                  }
+                  onClick={() => setSelectedType(type.id)}
+                >
+                  {type.label}
+                </Button>
+              ))}
+            </div>
+            <p className="mt-2 text-xs text-muted-foreground">
+              This filters public facility metadata; it does not diagnose the emergency or confirm capability.
+            </p>
+          </div>
 
           {!userLocation && !loading && (
             <div className="flex flex-col items-center justify-center gap-3 sm:flex-row">
@@ -159,6 +219,22 @@ const Index = () => {
                 onClick={() => runSearch({ lat: 33.8938, lng: 35.5018 })}
               >
                 Use Beirut demo point
+              </Button>
+            </div>
+          )}
+
+          {userLocation && !loading && (
+            <div className="flex flex-col items-center justify-center gap-3 sm:flex-row">
+              <Button
+                size="lg"
+                onClick={() => runSearch(userLocation)}
+                className="shadow-emergency"
+              >
+                <RefreshCw className="mr-2 h-5 w-5" />
+                Update {emergencyTypeLabel(selectedType)} ranking
+              </Button>
+              <Button size="lg" variant="outline" onClick={requestLocation}>
+                <MapPin className="mr-2 h-5 w-5" /> Use current GPS
               </Button>
             </div>
           )}
@@ -227,55 +303,105 @@ const Index = () => {
                 No matching specialty was found in OpenStreetMap tags. General hospitals are shown; confirm the required service before travelling.
               </div>
             )}
-            <Map
-              ref={mapRef}
-              memoryKey="home.map"
-              className="h-72 lg:h-96"
-              hospitals={hospitals}
-              userLocation={userLocation}
-            />
           </>
         )}
 
         {bestOption && (
-          <Card className="border-2 border-primary/30 bg-primary/5 p-6">
-            <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-              <Badge className="bg-success text-success-foreground">
-                Recommended option
-              </Badge>
-              <div className="flex flex-wrap gap-2">
-                <Badge variant="outline">ETA {bestOption.eta}</Badge>
-                <Badge variant="outline">{bestOption.distance}</Badge>
-                <Badge
-                  variant="outline"
-                  className={availabilityStyles[bestOption.availability.status]}
-                >
-                  {availabilityLabel(bestOption.availability.status)}
+          <Card className="overflow-hidden border-2 border-primary/30 shadow-emergency">
+            <div className="h-1.5 bg-safety-gradient" />
+            <div className="p-5 sm:p-6">
+              <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+                <Badge className="bg-primary text-primary-foreground">
+                  Fastest suitable option
                 </Badge>
-              </div>
-            </div>
-
-            <div className="flex flex-col justify-between gap-5 sm:flex-row sm:items-center">
-              <div>
-                <h2 className="mb-2 text-2xl font-semibold">{bestOption.name}</h2>
                 <div className="flex flex-wrap gap-2">
-                  <Badge variant="secondary">{bestOption.specialty}</Badge>
-                  <Badge variant="outline">
-                    {sourceLabels[bestOption.etaSource]}
+                  <Badge variant="outline">ETA {bestOption.eta}</Badge>
+                  <Badge variant="outline">{bestOption.distance}</Badge>
+                  <Badge
+                    variant="outline"
+                    className={
+                      availabilityStyles[bestOption.availability.status]
+                    }
+                  >
+                    {availabilityLabel(bestOption.availability.status)}
                   </Badge>
                 </div>
-                <p className="mt-3 max-w-2xl text-sm text-muted-foreground">
-                  Ranked by availability status first, then fastest ETA among eligible facilities. Demo availability is not hospital-confirmed.
-                </p>
               </div>
 
-              <Button size="lg" onClick={() => showHospitalRoute(bestOption)}>
-                <Navigation className="mr-2 h-5 w-5" />
-                View route
-              </Button>
+              <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
+                <div className="min-w-0">
+                  <p className="mb-2 text-sm font-medium text-muted-foreground">
+                    Best current result for{" "}
+                    {emergencyTypeLabel(activeEmergencyType)}
+                  </p>
+                  <h2 className="mb-3 text-2xl font-bold sm:text-3xl">
+                    {bestOption.name}
+                  </h2>
+                  <div className="flex flex-wrap gap-2">
+                    <Badge variant="secondary">{bestOption.specialty}</Badge>
+                    <Badge variant="outline">
+                      {sourceLabels[bestOption.etaSource]}
+                    </Badge>
+                  </div>
+                  <p className="mt-3 max-w-2xl text-sm text-muted-foreground">
+                    Ranked by availability status first, then fastest ETA among eligible facilities. Demo availability is not hospital-confirmed.
+                  </p>
+                </div>
+
+                <div className="flex flex-col items-stretch gap-3 sm:flex-row lg:flex-col">
+                  <div className="rounded-2xl bg-primary/10 px-6 py-4 text-center">
+                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">
+                      Ranked ETA
+                    </p>
+                    <p className="mt-1 text-4xl font-bold text-primary">
+                      {bestOption.eta}
+                    </p>
+                  </div>
+                  <Button
+                    size="lg"
+                    onClick={() => showHospitalRoute(bestOption)}
+                  >
+                    <Navigation className="mr-2 h-5 w-5" />
+                    View route
+                  </Button>
+                </div>
+              </div>
             </div>
           </Card>
         )}
+
+        {decisionEvidence ? (
+          <DecisionEvidenceCard evidence={decisionEvidence} />
+        ) : null}
+
+        {decisionRecord ? (
+          <AIDecisionBrief decision={decisionRecord} />
+        ) : null}
+
+        {userLocation && !isInitialSearch && hospitals.length > 0 ? (
+          <div ref={mapSectionRef} className="scroll-mt-24">
+          <Card className="p-4 shadow-soft sm:p-6">
+            <div className="mb-4 flex flex-col justify-between gap-2 sm:flex-row sm:items-end">
+              <div>
+                <div className="mb-1 flex items-center gap-2 text-sm font-semibold text-primary">
+                  <Clock3 className="h-4 w-4" /> Route evidence
+                </div>
+                <h2 className="text-xl font-bold">Hospital routes and alternatives</h2>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Select any hospital card below to compare its route.
+              </p>
+            </div>
+            <Map
+              ref={mapRef}
+              memoryKey="home.map"
+              className="h-80 lg:h-[28rem]"
+              hospitals={hospitals}
+              userLocation={userLocation}
+            />
+          </Card>
+          </div>
+        ) : null}
 
         {hospitals.length > 1 && (
           <Card className="p-6">

@@ -1,4 +1,4 @@
-import { Home, Settings, BarChart3, Filter, BrainCircuit } from "lucide-react";
+import { Home, Settings, BarChart3, FlaskConical } from "lucide-react";
 import { useLocation, Link } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -16,15 +16,9 @@ const BottomNav = () => {
     },
     { 
       path: "/options", 
-      icon: Filter, 
-      label: t('nav.options'),
+      icon: FlaskConical,
+      label: t('nav.scenario'),
       isActive: location.pathname === "/options"
-    },
-    { 
-      path: "/health-assistant", 
-      icon: BrainCircuit,
-      label: "Agent",
-      isActive: location.pathname === "/health-assistant"
     },
     { 
       path: "/dashboard", 

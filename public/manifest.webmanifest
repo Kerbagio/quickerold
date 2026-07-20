@@ -1,7 +1,7 @@
 {
   "name": "QuickER",
   "short_name": "QuickER",
-  "description": "Find the nearest emergency care facility with real-time routing.",
+  "description": "Compare suitable nearby hospitals by fastest available road ETA.",
   "start_url": "/home",
   "scope": "/",
   "display": "standalone",

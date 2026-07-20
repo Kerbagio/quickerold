@@ -1,127 +1,171 @@
-import Layout from "@/components/Layout";
-import HealthChatbot from "@/components/HealthChatbot";
-import { Card } from "@/components/ui/card";
+import { useState } from "react";
+import { Link } from "react-router-dom";
+import {
+  ArrowRight,
+  Bot,
+  BrainCircuit,
+  CheckCircle2,
+  Database,
+  MapPinned,
+  ShieldCheck,
+  Sparkles,
+} from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { Bot, Heart, AlertTriangle, Stethoscope, Phone } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import Layout from "@/components/Layout";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { getDecisionHistory } from "@/services/analytics";
+import {
+  deterministicExplanation,
+  explainDecision,
+  type AgentExplanation,
+} from "@/services/agent";
 
 const HealthAssistant = () => {
-  const { t, language } = useLanguage();
+  const { language } = useLanguage();
+  const latestDecision = getDecisionHistory()[0];
+  const [explanation, setExplanation] = useState<AgentExplanation | null>(() =>
+    latestDecision ? deterministicExplanation(latestDecision) : null,
+  );
+  const [isExplaining, setIsExplaining] = useState(false);
 
-  const features = [
+  const generateExplanation = async () => {
+    if (!latestDecision) return;
+    setIsExplaining(true);
+    setExplanation(await explainDecision(latestDecision));
+    setIsExplaining(false);
+  };
+
+  const steps = [
     {
-      icon: AlertTriangle,
-      title: "Emergency Guidance",
-      description: "Get immediate help for urgent medical situations",
-      color: "text-red-500"
+      icon: MapPinned,
+      title: "Observe",
+      description: "Read the selected start point, emergency filter, nearby hospitals and ETA source.",
     },
     {
-      icon: Stethoscope,
-      title: "Symptom Checker",
-      description: "Understand your symptoms and when to seek help",
-      color: "text-blue-500"
+      icon: Database,
+      title: "Evaluate",
+      description: "Check specialty metadata and availability status before comparing eligible ETAs.",
     },
     {
-      icon: Heart,
-      title: "Health Advice",
-      description: "General health information and wellness tips",
-      color: "text-green-500"
+      icon: ShieldCheck,
+      title: "Act",
+      description: "Rank facilities, highlight the safest eligible option and prepare its road route.",
     },
     {
-      icon: Phone,
-      title: "Hospital Finder",
-      description: "Quick access to find nearby medical facilities",
-      color: "text-purple-500"
-    }
+      icon: BrainCircuit,
+      title: "Explain",
+      description: "Show exactly which data source and rule produced the recommendation.",
+    },
   ];
 
   return (
     <Layout>
-      <div className={`container mx-auto px-6 py-8 space-y-8 ${language === 'ar' ? 'rtl' : ''}`}>
-        {/* Header */}
-        <div className="text-center mb-8">
-          <div className="flex justify-center mb-4">
-            <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center">
-              <Bot className="w-8 h-8 text-primary" />
-            </div>
+      <div
+        className={`container mx-auto space-y-8 px-4 py-6 sm:px-6 sm:py-8 ${
+          language === "ar" ? "rtl" : ""
+        }`}
+      >
+        <div className="text-center">
+          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">
+            <Bot className="h-8 w-8 text-primary" />
           </div>
-          <h1 className="text-3xl font-bold text-foreground mb-4">
-            Health Assistant
-          </h1>
-          <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-            Get instant health guidance and answers to your medical questions. 
-            Our AI assistant can help with symptoms, emergencies, and general health advice.
+          <h1 className="mb-4 text-3xl font-bold">QuickER Dispatch Agent</h1>
+          <p className="mx-auto max-w-2xl text-lg text-muted-foreground">
+            A transparent decision agent for hospital routing—not a symptom checker and not medical advice.
           </p>
         </div>
 
-        {/* Features Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          {features.map((feature, index) => (
-            <Card key={index} className="p-6 text-center hover:shadow-md transition-shadow">
-              <div className={`w-12 h-12 mx-auto mb-4 rounded-full bg-muted flex items-center justify-center`}>
-                <feature.icon className={`w-6 h-6 ${feature.color}`} />
+        <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+          {steps.map((step, index) => (
+            <Card key={step.title} className="p-5">
+              <div className="mb-4 flex items-center justify-between">
+                <step.icon className="h-6 w-6 text-primary" />
+                <Badge variant="outline">Step {index + 1}</Badge>
               </div>
-              <h3 className="font-semibold mb-2">{feature.title}</h3>
-              <p className="text-sm text-muted-foreground">{feature.description}</p>
+              <h2 className="mb-2 font-semibold">{step.title}</h2>
+              <p className="text-sm text-muted-foreground">{step.description}</p>
             </Card>
           ))}
         </div>
 
-        {/* Important Notice */}
-        <Card className="p-6 border-amber-200 bg-amber-50 dark:bg-amber-950/20">
-          <div className="flex items-start gap-3">
-            <AlertTriangle className="w-6 h-6 text-amber-600 flex-shrink-0 mt-0.5" />
+        <Card className="border-primary/30 bg-primary/5 p-6">
+          <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
             <div>
-              <h3 className="font-semibold text-amber-800 dark:text-amber-200 mb-2">
-                Important Medical Disclaimer
-              </h3>
-              <p className="text-sm text-amber-700 dark:text-amber-300 mb-3">
-                This health assistant provides general information only and is not a substitute for professional medical advice, diagnosis, or treatment. 
-                Always seek the advice of qualified health providers with questions about medical conditions.
+              <h2 className="text-xl font-semibold">Latest agent decision</h2>
+              <p className="text-sm text-muted-foreground">
+                Generated from structured routing data stored locally in this browser.
               </p>
-              <div className="flex flex-wrap gap-2">
-                <Badge variant="outline" className="text-amber-700 border-amber-300">
-                  Not for emergencies
-                </Badge>
-                <Badge variant="outline" className="text-amber-700 border-amber-300">
-                  General guidance only
-                </Badge>
-                <Badge variant="outline" className="text-amber-700 border-amber-300">
-                  Consult professionals
-                </Badge>
+            </div>
+            <Badge variant="outline">Deterministic safety rules</Badge>
+          </div>
+
+          {latestDecision ? (
+            <div className="space-y-4">
+              <div className="flex gap-3 rounded-xl bg-background p-4">
+                <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-success" />
+                <div>
+                  <h3 className="font-semibold">
+                    Recommend {latestDecision.recommendedHospital}
+                  </h3>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    {explanation?.text}
+                  </p>
+                </div>
               </div>
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <Badge variant="outline">
+                  {explanation?.mode === "gemini"
+                    ? `Gemini AI${explanation.model ? ` • ${explanation.model}` : ""}`
+                    : "Deterministic fallback"}
+                </Badge>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={generateExplanation}
+                  disabled={isExplaining}
+                >
+                  <Sparkles className={`mr-2 h-4 w-4 ${isExplaining ? "animate-pulse" : ""}`} />
+                  {isExplaining ? "Generating…" : "Explain with free AI"}
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Availability is a demo feed unless explicitly connected to an authorized hospital system. Specialty metadata must be confirmed with the facility.
+              </p>
             </div>
+          ) : (
+            <div className="rounded-xl bg-background p-6 text-center">
+              <p className="mb-4 text-muted-foreground">
+                No routing decision has been recorded yet.
+              </p>
+              <Button asChild>
+                <Link to="/home">
+                  Find a hospital <ArrowRight className="ml-2 h-4 w-4" />
+                </Link>
+              </Button>
+            </div>
+          )}
+        </Card>
+
+        <Card className="p-6">
+          <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
+            <div>
+              <div className="mb-2 flex items-center gap-2">
+                <BrainCircuit className="h-5 w-5" />
+                <h2 className="text-xl font-semibold">Optional free AI layer</h2>
+              </div>
+              <p className="max-w-3xl text-sm text-muted-foreground">
+                Gemini converts only the non-location decision summary into a natural explanation through a Cloudflare Pages Function. The rules engine remains responsible for eligibility and routing, so the app still functions when AI is unconfigured or its free quota is unavailable.
+              </p>
+            </div>
+            <Badge variant="outline">Free-tier optional</Badge>
           </div>
         </Card>
 
-        {/* Chatbot Interface */}
-        <Card className="h-[600px] overflow-hidden">
-          <HealthChatbot />
-        </Card>
-
-        {/* Emergency Contact Info */}
-        <Card className="p-6 border-red-200 bg-red-50 dark:bg-red-950/20">
-          <div className="flex items-center gap-3 mb-4">
-            <Phone className="w-6 h-6 text-red-600" />
-            <h3 className="font-semibold text-red-800 dark:text-red-200">
-              Emergency Contacts
-            </h3>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-            <div>
-              <strong className="text-red-800 dark:text-red-200">United States</strong>
-              <p className="text-red-700 dark:text-red-300">911</p>
-            </div>
-            <div>
-              <strong className="text-red-800 dark:text-red-200">United Kingdom</strong>
-              <p className="text-red-700 dark:text-red-300">999 or 112</p>
-            </div>
-            <div>
-              <strong className="text-red-800 dark:text-red-200">European Union</strong>
-              <p className="text-red-700 dark:text-red-300">112</p>
-            </div>
-          </div>
-        </Card>
+        <div className="rounded-xl border border-warning/40 bg-warning/10 p-4 text-sm">
+          <strong>Safety boundary:</strong> The agent does not diagnose symptoms, determine treatment, confirm hospital capability, or replace local emergency services.
+        </div>
       </div>
     </Layout>
   );

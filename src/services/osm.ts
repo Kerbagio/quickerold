@@ -9,6 +9,19 @@ export interface OSMHospital {
   tags?: Record<string, string>;
 }
 
+interface OverpassElement {
+  id: number;
+  type: "node" | "way" | "relation";
+  lat?: number;
+  lon?: number;
+  center?: { lat: number; lon: number };
+  tags?: Record<string, string>;
+}
+
+interface OverpassResponse {
+  elements?: OverpassElement[];
+}
+
 // Fetch hospitals near a coordinate using Overpass API (free)
 export async function fetchHospitalsFromOSM(
   lat: number,
@@ -20,9 +33,8 @@ export async function fetchHospitalsFromOSM(
   const query = `
     [out:json][timeout:25];
     (
-      node["amenity"="hospital"](around:${radiusMeters},${lat},${lng});
-      way["amenity"="hospital"](around:${radiusMeters},${lat},${lng});
-      relation["amenity"="hospital"](around:${radiusMeters},${lat},${lng});
+      nwr["amenity"="hospital"](around:${radiusMeters},${lat},${lng});
+      nwr["healthcare"="hospital"](around:${radiusMeters},${lat},${lng});
     );
     out center tags 50;
   `;
@@ -45,8 +57,8 @@ export async function fetchHospitalsFromOSM(
         continue;
       }
 
-      const data = await res.json();
-      const elements: any[] = data?.elements || [];
+      const data = (await res.json()) as OverpassResponse;
+      const elements = data.elements ?? [];
 
       const hospitals: OSMHospital[] = elements
         .map((el) => {
@@ -54,16 +66,16 @@ export async function fetchHospitalsFromOSM(
           if (!center) return null;
           const name: string = el.tags?.name || "Unnamed Hospital";
           return {
-            id: String(el.id),
+            id: `${el.type}-${el.id}`,
             name,
             lat: center.lat,
             lng: center.lon,
             tags: el.tags || {},
           } as OSMHospital;
         })
-        .filter(Boolean);
+        .filter((hospital): hospital is OSMHospital => hospital !== null);
 
-      return hospitals;
+      return [...new Map(hospitals.map((hospital) => [hospital.id, hospital])).values()];
     } catch (e) {
       // Try next endpoint on any error
       continue;

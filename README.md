@@ -1,73 +1,90 @@
-# Welcome to your Lovable project
+# QuickER
 
-## Project info
+QuickER ranks nearby hospitals by the fastest suitable travel option—not straight-line distance alone. It combines public hospital data, road travel times, emergency-type filters, an optional live-traffic layer, and a clearly labelled demo availability feed.
 
-**URL**: (https://quickerold.lovable.app/
+> QuickER is routing decision support, not a medical service or ambulance dispatcher. It does not diagnose, confirm hospital capability, or replace local emergency services.
 
-## How can I edit this code?
+## What works with no account or API key
 
-There are several ways of editing your application.
+- Browser GPS or a clearly labelled Beirut presentation point.
+- Nearby hospital discovery from OpenStreetMap through public Overpass endpoints.
+- Road-network ETA ranking and route geometry through the public OSRM demo service.
+- General, cardiac, pediatric, and maternity metadata filtering.
+- Automatic distance-estimate fallback if public routing is unavailable.
+- Simulated availability changes for demonstrating automatic reranking.
+- Local-only analytics dashboard and CSV export; precise coordinates are not stored.
+- Deterministic agent explanation when the optional AI quota is unavailable.
 
-**Use Lovable**
+## Optional free-tier upgrades
 
-Simply visit the [Lovable Project]((https://quickerold.lovable.app/)) and start prompting.
+Provider keys are stored only as Cloudflare Pages secrets. They are never bundled into frontend JavaScript.
 
-Changes made via Lovable will be committed automatically to this repo.
+| Secret | Feature | Fallback when missing or limited |
+|---|---|---|
+| `TOMTOM_API_KEY` | Live-traffic ETA for the five fastest road candidates | OSRM road-network ETA |
+| `ORS_API_KEY` | Road-based 5/10/15-minute isochrones | Clearly labelled estimated circles |
+| `GEMINI_API_KEY` | Natural-language explanation of a structured decision | Deterministic explanation |
+| `GEMINI_MODEL` | Optional Gemini model override | `gemini-3.5-flash` |
 
-**Use your preferred IDE**
+Use provider projects with billing disabled if the goal is a strict $0 ceiling. Free quotas can run out and public services do not promise uptime; QuickER degrades visibly instead of inventing data or creating a charge.
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+## Decision flow
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+1. Discover hospitals within the selected radius using public map data.
+2. Apply the emergency-type metadata filter. If no specialty metadata matches, show general hospitals with a warning.
+3. Pre-rank up to 12 nearby candidates with an OSRM road matrix.
+4. If configured, compare the fastest five again using live traffic.
+5. Rank `accepting`, then `limited`, then `unknown`, and place `diverting` facilities last; sort each group by ETA.
+6. Highlight the best option, disclose its source, and render the road path.
+7. Store only a small, local decision summary for the dashboard and agent explanation.
 
-Follow these steps:
+The generative AI layer explains a completed structured decision. It cannot change the selected hospital, invent availability, or provide medical advice.
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+## Run locally
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+Requirements: Node.js 20+ and npm.
 
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
+```bash
+npm ci
 npm run dev
 ```
 
-**Edit a file directly in GitHub**
+Open `http://localhost:8080`. Without keys, the complete core flow still works using the free fallbacks.
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+Run all checks:
 
-**Use GitHub Codespaces**
+```bash
+npm run check
+```
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+To test Cloudflare Pages Functions locally, copy `.dev.vars.example` to `.dev.vars`, add only the secrets you want to test, then run:
 
-## What technologies are used for this project?
+```bash
+npm run build
+npx wrangler pages dev dist
+```
 
-This project is built with:
+Never commit `.dev.vars`, `.env`, or real keys.
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+## Deploy for $0 on Cloudflare Pages
 
-## How can I deploy this project?
+1. Create a Cloudflare Pages project from this GitHub repository.
+2. Set the build command to `npm run build` and output directory to `dist`.
+3. Deploy once. The app works immediately in road-network fallback mode.
+4. Optionally add the free provider keys under Pages project settings → Variables and Secrets.
+5. Redeploy and verify the source badges on the Find Hospital and Emergency Options pages.
 
-Simply open [Lovable](https://lovable.dev/projects/164ad98f-010e-479f-8065-9ccf9f36578b) and click on Share -> Publish.
+The `functions/api` directory contains the secret-protecting traffic, isochrone, and Gemini proxies. `public/_redirects` preserves React routes on refresh.
 
-## Can I connect a custom domain to my Lovable project?
+## Demo sequence
 
-Yes, you can!
+1. Open **Find Hospital**, choose **Use Beirut demo point**, and show that hospitals are ranked by road ETA.
+2. Open the fastest route and point to the ETA source badge.
+3. Open **Dashboard**, select **Run rerouting demo**, and show the diverting hospital move below an accepting alternative.
+4. Open **Emergency Options**, change the specialty filter, and show the 5/10/15-minute accessibility layer.
+5. Open **Agent**, generate an explanation, and show whether Gemini or the deterministic fallback produced it.
+6. End on **About** to explain the $0 architecture and its honest limitations.
 
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
+## Technology
 
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/tips-tricks/custom-domain#step-by-step-guide)
+React, TypeScript, Vite, Tailwind CSS, Shadcn UI, Leaflet, Recharts, OpenStreetMap/Overpass, OSRM, optional TomTom, optional openrouteservice, optional Gemini, and Cloudflare Pages Functions.

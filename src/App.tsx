@@ -4,18 +4,19 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { ThemeProvider } from "next-themes";
+import { lazy, Suspense } from "react";
 import OfflineNotice from "./components/OfflineNotice";
-import Index from "./pages/Index";
-import Options from "./pages/Options";
-import Dashboard from "./pages/Dashboard";
-import HealthAssistant from "./pages/HealthAssistant";
-import Onboarding from "./pages/Onboarding";
-import Settings from "./pages/Settings";
-import About from "./pages/About";
-import PrivacyPolicy from "./pages/PrivacyPolicy";
-import TermsOfService from "./pages/TermsOfService";
-import LogoExtract from "./pages/LogoExtract";
-import NotFound from "./pages/NotFound";
+
+const Index = lazy(() => import("./pages/Index"));
+const Options = lazy(() => import("./pages/Options"));
+const Dashboard = lazy(() => import("./pages/Dashboard"));
+const HealthAssistant = lazy(() => import("./pages/HealthAssistant"));
+const Onboarding = lazy(() => import("./pages/Onboarding"));
+const Settings = lazy(() => import("./pages/Settings"));
+const About = lazy(() => import("./pages/About"));
+const PrivacyPolicy = lazy(() => import("./pages/PrivacyPolicy"));
+const TermsOfService = lazy(() => import("./pages/TermsOfService"));
+const NotFound = lazy(() => import("./pages/NotFound"));
 
 const queryClient = new QueryClient();
 
@@ -32,21 +33,27 @@ const App = () => (
         <Sonner />
         <OfflineNotice />
         <BrowserRouter>
-          <Routes>
-            <Route path="/" element={<Onboarding />} />
-            <Route path="/home" element={<Index />} />
-            <Route path="/options" element={<Options />} />
-            <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="/health-assistant" element={<HealthAssistant />} />
-            <Route path="/onboarding" element={<Onboarding />} />
-            <Route path="/settings" element={<Settings />} />
-            <Route path="/about" element={<About />} />
-            <Route path="/logo-extract" element={<LogoExtract />} />
-            <Route path="/privacy-policy" element={<PrivacyPolicy />} />
-            <Route path="/terms-of-service" element={<TermsOfService />} />
-            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-            <Route path="*" element={<NotFound />} />
-          </Routes>
+          <Suspense
+            fallback={
+              <div className="flex min-h-screen items-center justify-center text-sm text-muted-foreground">
+                Loading QuickER…
+              </div>
+            }
+          >
+            <Routes>
+              <Route path="/" element={<Index />} />
+              <Route path="/home" element={<Index />} />
+              <Route path="/options" element={<Options />} />
+              <Route path="/dashboard" element={<Dashboard />} />
+              <Route path="/health-assistant" element={<HealthAssistant />} />
+              <Route path="/onboarding" element={<Onboarding />} />
+              <Route path="/settings" element={<Settings />} />
+              <Route path="/about" element={<About />} />
+              <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+              <Route path="/terms-of-service" element={<TermsOfService />} />
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </Suspense>
         </BrowserRouter>
       </TooltipProvider>
     </ThemeProvider>

@@ -1,18 +1,39 @@
-import { useState, useCallback } from 'react';
+import { useCallback, useState } from "react";
 import { useToast } from "@/hooks/use-toast";
-import { fetchHospitalsFromOSM } from "@/services/osm";
+import {
+  type OSMHospital,
+  fetchHospitalsFromOSM,
+} from "@/services/osm";
+import {
+  type EtaSource,
+  calculateHospitalEtas,
+  haversineKm,
+} from "@/services/routing";
+import {
+  type AvailabilityRecord,
+  getAvailability,
+  sortForDispatch,
+} from "@/services/availability";
+import { recordDecision } from "@/services/analytics";
+
+export type EmergencyType = "general" | "cardiac" | "pediatric" | "maternity";
+export type SpecialtyMatch = "tagged" | "name-match" | "unknown";
 
 export interface Hospital {
   id: string;
   name: string;
   lat: number;
   lng: number;
-  eta?: string;
-  distance?: string;
-  specialty?: string;
-  traffic?: 'low' | 'medium' | 'high';
-  waitTime?: string;
-  capacity?: 'low' | 'medium' | 'high';
+  eta: string;
+  etaMinutes: number;
+  etaSource: EtaSource;
+  distance: string;
+  distanceKm: number;
+  specialty: string;
+  specialtyMatch: SpecialtyMatch;
+  trafficDelayMinutes?: number;
+  availability: AvailabilityRecord;
+  tags: Record<string, string>;
 }
 
 interface UseHospitalsOptions {
@@ -20,195 +41,227 @@ interface UseHospitalsOptions {
   emergencyType?: string;
 }
 
+export interface RoutingStatus {
+  source: EtaSource | null;
+  notice: string;
+  generatedAt: string | null;
+}
+
 interface UseHospitalsReturn {
   hospitals: Hospital[];
   loading: boolean;
   error: string | null;
-  fetchHospitals: (lat: number, lng: number, options?: UseHospitalsOptions) => Promise<void>;
+  fetchHospitals: (
+    lat: number,
+    lng: number,
+    options?: UseHospitalsOptions,
+  ) => Promise<void>;
   bestOption: Hospital | null;
+  routingStatus: RoutingStatus;
+  specialtyFallback: boolean;
+}
+
+const emergencyTerms: Record<Exclude<EmergencyType, "general">, string[]> = {
+  cardiac: ["cardio", "cardiac", "heart"],
+  pediatric: ["paediatric", "pediatric", "children", "child", "kids"],
+  maternity: ["maternity", "obstetric", "gynaec", "gynec", "women", "birth"],
+};
+
+function normalizeEmergencyType(value: string): EmergencyType {
+  return ["general", "cardiac", "pediatric", "maternity"].includes(value)
+    ? (value as EmergencyType)
+    : "general";
+}
+
+function getSpecialtyMatch(
+  hospital: OSMHospital,
+  emergencyType: EmergencyType,
+): SpecialtyMatch {
+  if (emergencyType === "general") return "tagged";
+
+  const terms = emergencyTerms[emergencyType];
+  const taggedSpecialty = [
+    hospital.tags?.["healthcare:speciality"],
+    hospital.tags?.["healthcare:specialty"],
+    hospital.tags?.["medical_system"],
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
+  if (terms.some((term) => taggedSpecialty.includes(term))) return "tagged";
+
+  const name = hospital.name.toLowerCase();
+  return terms.some((term) => name.includes(term)) ? "name-match" : "unknown";
+}
+
+function specialtyLabel(
+  hospital: OSMHospital,
+  emergencyType: EmergencyType,
+  match: SpecialtyMatch,
+): string {
+  const tagged =
+    hospital.tags?.["healthcare:speciality"] ??
+    hospital.tags?.["healthcare:specialty"];
+  if (tagged) return tagged.split(";").join(", ");
+  if (match !== "unknown" && emergencyType !== "general") {
+    return `${emergencyType[0].toUpperCase()}${emergencyType.slice(1)} match`;
+  }
+  return hospital.tags?.emergency === "yes" ? "General ER" : "Hospital";
 }
 
 export const useHospitals = (): UseHospitalsReturn => {
   const [hospitals, setHospitals] = useState<Hospital[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [specialtyFallback, setSpecialtyFallback] = useState(false);
+  const [routingStatus, setRoutingStatus] = useState<RoutingStatus>({
+    source: null,
+    notice: "",
+    generatedAt: null,
+  });
   const { toast } = useToast();
 
+  const fetchHospitals = useCallback(
+    async (
+      lat: number,
+      lng: number,
+      options: UseHospitalsOptions = {},
+    ) => {
+      const radius = Math.min(Math.max(options.radius ?? 8, 2), 25);
+      const emergencyType = normalizeEmergencyType(
+        options.emergencyType ?? "general",
+      );
 
-  const fetchHospitals = useCallback(async (
-    lat: number, 
-    lng: number, 
-    options: UseHospitalsOptions = {}
-  ) => {
-    const { radius = 8, emergencyType = 'general' } = options;
-    
-    console.log('useHospitals: fetchHospitals called with:', { lat, lng, radius, emergencyType });
-    
-    setLoading(true);
-    setError(null);
+      setLoading(true);
+      setError(null);
+      setSpecialtyFallback(false);
 
-    try {
-      // Check if offline
-      if (!navigator.onLine) {
-        throw new Error('offline');
-      }
+      try {
+        if (!navigator.onLine) throw new Error("offline");
 
-      console.log('useHospitals: Fetching real hospitals from OSM...');
-      const osmHospitals = await fetchHospitalsFromOSM(lat, lng, radius);
-      console.log('useHospitals: OSM results:', osmHospitals);
+        const osmHospitals = await fetchHospitalsFromOSM(lat, lng, radius);
+        if (osmHospitals.length === 0) {
+          setHospitals([]);
+          throw new Error("no-hospitals");
+        }
 
-      // Distance helper (Haversine)
-      const haversineKm = (lat1: number, lon1: number, lat2: number, lon2: number) => {
-        const R = 6371; // km
-        const dLat = (lat2 - lat1) * Math.PI / 180;
-        const dLon = (lon2 - lon1) * Math.PI / 180;
-        const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
-          Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-          Math.sin(dLon/2) * Math.sin(dLon/2);
-        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-        return R * c;
-      };
+        const withMatches = osmHospitals.map((hospital) => ({
+          hospital,
+          match: getSpecialtyMatch(hospital, emergencyType),
+        }));
+        const matchingHospitals =
+          emergencyType === "general"
+            ? withMatches
+            : withMatches.filter(({ match }) => match !== "unknown");
+        const isSpecialtyFallback =
+          emergencyType !== "general" && matchingHospitals.length === 0;
+        const hospitalsToRoute = isSpecialtyFallback
+          ? withMatches
+          : matchingHospitals;
+        setSpecialtyFallback(isSpecialtyFallback);
 
-      // Use only real hospitals from OSM
-      if (!osmHospitals || osmHospitals.length === 0) {
-        toast({
-          title: "No hospitals found",
-          description: "No emergency facilities found nearby. Try expanding your search radius.",
-          variant: "destructive"
+        const origin = { lat, lng };
+        const routingResult = await calculateHospitalEtas(
+          origin,
+          hospitalsToRoute.map(({ hospital }) => ({
+            id: hospital.id,
+            lat: hospital.lat,
+            lng: hospital.lng,
+          })),
+        );
+        const routeByHospitalId = new Map(
+          routingResult.estimates.map((estimate) => [
+            estimate.hospitalId,
+            estimate,
+          ]),
+        );
+
+        const enriched = hospitalsToRoute.flatMap(({ hospital, match }) => {
+          const route = routeByHospitalId.get(hospital.id);
+          if (!route) return [];
+
+          const distanceKm =
+            route.distanceKm || haversineKm(origin, hospital);
+          return [
+            {
+              id: hospital.id,
+              name: hospital.name,
+              lat: hospital.lat,
+              lng: hospital.lng,
+              eta: `${route.durationMinutes} min`,
+              etaMinutes: route.durationMinutes,
+              etaSource: route.source,
+              distance: `${distanceKm.toFixed(1)} km`,
+              distanceKm,
+              specialty: specialtyLabel(hospital, emergencyType, match),
+              specialtyMatch: match,
+              trafficDelayMinutes: route.trafficDelayMinutes,
+              availability: getAvailability(hospital.id),
+              tags: hospital.tags ?? {},
+            } satisfies Hospital,
+          ];
         });
+
+        const ranked = sortForDispatch(enriched);
+        setHospitals(ranked);
+        setRoutingStatus({
+          source: routingResult.source,
+          notice: routingResult.notice,
+          generatedAt: routingResult.generatedAt,
+        });
+
+        const recommendation = ranked[0];
+        if (recommendation) {
+          recordDecision({
+            timestamp: new Date().toISOString(),
+            emergencyType,
+            candidateCount: ranked.length,
+            recommendedHospital: recommendation.name,
+            etaMinutes: recommendation.etaMinutes,
+            etaSource: recommendation.etaSource,
+            availability: recommendation.availability.status,
+          });
+        }
+
+        toast({
+          title: `${ranked.length} hospitals ranked`,
+          description: isSpecialtyFallback
+            ? `No ${emergencyType} specialty was found in OpenStreetMap tags, so general hospitals are shown for confirmation.`
+            : routingResult.notice,
+        });
+      } catch (caughtError) {
+        let message = "Hospital data could not be loaded. Please try again.";
+        if (caughtError instanceof Error && caughtError.message === "offline") {
+          message = "You're offline. Reconnect and try again.";
+        } else if (
+          caughtError instanceof Error &&
+          caughtError.message === "no-hospitals"
+        ) {
+          message =
+            "No hospitals were found nearby. Expand the radius or call local emergency services.";
+        }
+
+        setError(message);
         setHospitals([]);
-        return;
-      }
-
-      // Filter hospitals by emergency type first
-      const filterByEmergencyType = (hospitals: any[], type: string) => {
-        if (type === 'general') return hospitals; // Show all for general
-        
-        return hospitals.filter((hospital: any) => {
-          const name = (hospital.name || hospital?.tags?.name || '').toLowerCase();
-          const specialty = (hospital?.tags?.['healthcare:speciality'] || '').toLowerCase();
-          const emergency = hospital?.tags?.emergency;
-          
-          switch (type) {
-            case 'cardiac':
-              return specialty.includes('cardio') || 
-                     specialty.includes('heart') ||
-                     name.includes('heart') ||
-                     name.includes('cardiac') ||
-                     name.includes('cardio');
-                     
-            case 'pediatric':
-              return specialty.includes('pediatric') ||
-                     specialty.includes('children') ||
-                     name.includes('children') ||
-                     name.includes('pediatric') ||
-                     name.includes('kids');
-                     
-            case 'maternity':
-              return specialty.includes('maternity') ||
-                     specialty.includes('obstetric') ||
-                     specialty.includes('gynecology') ||
-                     name.includes('maternity') ||
-                     name.includes('women') ||
-                     name.includes('birth');
-                     
-            default:
-              return true;
-          }
-        });
-      };
-
-      const filteredByType = filterByEmergencyType(osmHospitals, emergencyType);
-      
-      // If no specialty matches found, show all hospitals with a note
-      const hospitalsToUse = filteredByType.length > 0 ? filteredByType : osmHospitals;
-      const showingAllNote = filteredByType.length === 0 && emergencyType !== 'general';
-
-      // Enrich data with distance and ETA and map to our Hospital type
-      const enriched = hospitalsToUse.map((item: any) => {
-        const hospitalLat = item.lat;
-        const hospitalLng = item.lng;
-        const d = haversineKm(lat, lng, hospitalLat, hospitalLng);
-        const etaMin = Math.max(3, Math.round(d * 2)); // ~30km/h average
-        const name = item.name || item?.tags?.name || 'Hospital';
-
-        const mapped: Hospital = {
-          id: String(item.id ?? `${hospitalLat.toFixed(4)},${hospitalLng.toFixed(4)}`),
-          name,
-          lat: hospitalLat,
-          lng: hospitalLng,
-          distance: `${d.toFixed(1)} km`,
-          eta: `${etaMin} min`,
-          specialty: item?.tags?.['healthcare:speciality'] || item?.specialty || 'ER',
-          traffic: item?.traffic,
-          waitTime: item?.waitTime,
-          capacity: item?.capacity
-        };
-        return mapped;
-      });
-
-      // Filter by radius (km)
-      const filteredHospitals = enriched.filter(hospital => {
-        const distance = parseFloat(hospital.distance?.replace(' km', '') || '0');
-        return distance <= radius;
-      });
-      console.log('useHospitals: Filtered hospitals:', filteredHospitals);
-
-      // Sort by ETA (best first)
-      const sortedHospitals = filteredHospitals.sort((a, b) => {
-        const etaA = parseInt(a.eta?.replace(' min', '') || '999', 10);
-        const etaB = parseInt(b.eta?.replace(' min', '') || '999', 10);
-        return etaA - etaB;
-      });
-
-      console.log('useHospitals: Final sorted hospitals:', sortedHospitals);
-      setHospitals(sortedHospitals);
-
-      if (sortedHospitals.length === 0) {
         toast({
-          title: "No hospitals found",
-          description: "No emergency facilities found nearby. Expand your search radius in Options.",
-          variant: "destructive"
-        });
-      } else {
-        const message = showingAllNote 
-          ? `Found ${sortedHospitals.length} nearby hospitals (showing all - no ${emergencyType} specialists found)`
-          : `Found ${sortedHospitals.length} nearby ${emergencyType} facilities`;
-        
-        toast({
-          title: "Hospitals found",
+          title: "Unable to rank hospitals",
           description: message,
-          variant: showingAllNote ? "default" : "default"
+          variant: "destructive",
         });
+      } finally {
+        setLoading(false);
       }
-
-    } catch (err: any) {
-      let errorMessage = "Failed to fetch hospital data";
-      
-      if (err.message === 'offline') {
-        errorMessage = "You're offline. We'll retry automatically when you're back online.";
-      } else if (err.name === 'NetworkError') {
-        errorMessage = "Network error. Please check your connection and try again.";
-      }
-      
-      setError(errorMessage);
-      toast({
-        title: "Error fetching hospitals",
-        description: errorMessage,
-        variant: "destructive"
-      });
-    } finally {
-      setLoading(false);
-    }
-  }, [toast]);
-
-  const bestOption = hospitals.length > 0 ? hospitals[0] : null;
+    },
+    [toast],
+  );
 
   return {
     hospitals,
     loading,
     error,
     fetchHospitals,
-    bestOption
+    bestOption: hospitals[0] ?? null,
+    routingStatus,
+    specialtyFallback,
   };
 };

@@ -171,11 +171,3 @@ All colors MUST be HSL.
   .min-h-screen-dvh { min-height: 100dvh; }
   .h-screen-dvh { height: 100dvh; }
 }
-
-/* Hide Leaflet Routing Machine overlays and instructions */
-.leaflet-routing-container,
-.leaflet-routing-instructions,
-.leaflet-routing-summary,
-.leaflet-routing-itinerary {
-  display: none !important;
-}

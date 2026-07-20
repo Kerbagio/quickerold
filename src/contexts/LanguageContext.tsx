@@ -174,7 +174,7 @@ const translations: Record<Language, Record<string, string>> = {
 
     // About
     'about.title': 'About QuickER',
-    'about.description': 'QuickER helps you reach the fastest hospital using live traffic and routing. It\'s not a substitute for professional medical advice or emergency services.',
+    'about.description': 'QuickER compares hospitals using the best available road ETA and clearly labels whether optional live traffic is active. It is not a substitute for professional medical advice or emergency services.',
     'about.warning': 'If you are in immediate danger, call local emergency numbers.',
 
     // Errors
@@ -210,7 +210,7 @@ const translations: Record<Language, Record<string, string>> = {
     'about.heroTitle': 'Emergency care routing made simple',
     'about.heroSubtitle': 'Get to the right hospital, faster. Because in emergencies, minutes matter.',
     'about.whatWeDo': 'What We Do',
-    'about.whatWeDoDesc1': 'QuickER helps you reach the fastest hospital using live traffic and routing. It\'s not a substitute for professional medical advice or emergency services.',
+    'about.whatWeDoDesc1': 'QuickER compares hospitals using the best available road ETA and clearly labels whether optional live traffic is active. It is not a substitute for professional medical advice or emergency services.',
     'about.whatWeDoDesc2': 'The app compares available road ETAs, public specialty metadata and clearly labelled demo availability statuses.',
     'about.whatWeDoDesc3': 'We aggregate data from multiple sources to ensure you get the most accurate and up-to-date information when every minute counts.',
     'about.disclaimer': 'Important Disclaimer',
@@ -292,7 +292,7 @@ const translations: Record<Language, Record<string, string>> = {
     'privacy.sharing.thirdParty.title': 'Third-Party Services:',
     'privacy.sharing.thirdParty.item1': 'Map and routing providers (for navigation calculations)',
     'privacy.sharing.thirdParty.item2': 'Cloudflare Pages Functions (optional secret-protecting provider proxy)',
-    'privacy.sharing.thirdParty.item3': 'Gemini receives a non-location decision summary only when you request an AI explanation',
+    'privacy.sharing.thirdParty.item3': 'The optional AI explanation runs on-device; only model files are downloaded and the decision summary stays in your browser',
     'privacy.sharing.emergency.title': 'Emergency Situations:',
     'privacy.sharing.emergency.desc': 'This version does not send location history to emergency services or research partners.',
     'privacy.rights.title': 'Your Rights & Control',
@@ -471,7 +471,7 @@ const translations: Record<Language, Record<string, string>> = {
 
     // About
     'about.title': 'حول QuickER',
-    'about.description': 'يساعدك QuickER في الوصول إلى أسرع مستشفى باستخدام حركة المرور المباشرة والتوجيه. إنه ليس بديلاً عن المشورة الطبية المهنية أو خدمات الطوارئ.',
+    'about.description': 'يقارن QuickER المستشفيات باستخدام أفضل وقت وصول متاح عبر الطرق، ويوضح بجلاء ما إذا كانت بيانات المرور المباشر الاختيارية فعالة. وهو ليس بديلاً عن المشورة الطبية أو خدمات الطوارئ.',
     'about.warning': 'إذا كنت في خطر مباشر، اتصل بأرقام الطوارئ المحلية.',
 
     // Errors
@@ -505,7 +505,7 @@ const translations: Record<Language, Record<string, string>> = {
     'about.heroTitle': 'توجيه رعاية الطوارئ بسهولة',
     'about.heroSubtitle': 'اوصل إلى المستشفى المناسب، بسرعة أكبر. لأنه في حالات الطوارئ، كل دقيقة مهمة.',
     'about.whatWeDo': 'ما نقوم به',
-    'about.whatWeDoDesc1': 'يساعدك QuickER في الوصول إلى أسرع مستشفى باستخدام حركة المرور المباشرة والتوجيه. إنه ليس بديلاً عن المشورة الطبية المهنية أو خدمات الطوارئ.',
+    'about.whatWeDoDesc1': 'يقارن QuickER المستشفيات باستخدام أفضل وقت وصول متاح عبر الطرق، ويوضح بجلاء ما إذا كانت بيانات المرور المباشر الاختيارية فعالة. وهو ليس بديلاً عن المشورة الطبية أو خدمات الطوارئ.',
     'about.whatWeDoDesc2': 'يقارن التطبيق أوقات الطريق المتاحة وبيانات التخصص العامة وحالات التوفر التجريبية المعلّمة بوضوح.',
     'about.whatWeDoDesc3': 'نجمع البيانات من مصادر متعددة لضمان حصولك على أدق المعلومات وأحدثها عندما تكون كل دقيقة مهمة.',
     'about.disclaimer': 'إخلاء مسؤولية مهم',
@@ -587,7 +587,7 @@ const translations: Record<Language, Record<string, string>> = {
     'privacy.sharing.thirdParty.title': 'خدمات الأطراف الثالثة:',
     'privacy.sharing.thirdParty.item1': 'مقدمو الخرائط والتوجيه (لحسابات التنقل)',
     'privacy.sharing.thirdParty.item2': 'وظائف Cloudflare Pages الاختيارية لحماية مفاتيح المزودين',
-    'privacy.sharing.thirdParty.item3': 'يستقبل Gemini ملخص قرار دون موقع فقط عند طلب شرح بالذكاء الاصطناعي',
+    'privacy.sharing.thirdParty.item3': 'يعمل شرح الذكاء الاصطناعي الاختياري على جهازك؛ يتم تنزيل ملفات النموذج فقط ويبقى ملخص القرار في متصفحك',
     'privacy.sharing.emergency.title': 'حالات الطوارئ:',
     'privacy.sharing.emergency.desc': 'لا يرسل هذا الإصدار سجل الموقع إلى خدمات الطوارئ أو شركاء الأبحاث.',
     'privacy.rights.title': 'حقوقك والتحكم',
@@ -766,7 +766,7 @@ const translations: Record<Language, Record<string, string>> = {
 
     // About
     'about.title': 'À propos de QuickER',
-    'about.description': 'QuickER vous aide à atteindre l\'hôpital le plus rapide en utilisant le trafic en direct et le routage. Ce n\'est pas un substitut aux conseils médicaux professionnels ou aux services d\'urgence.',
+    'about.description': 'QuickER compare les hôpitaux selon le meilleur temps routier disponible et indique clairement si le trafic en direct facultatif est actif. Il ne remplace pas un avis médical ni les services d\'urgence.',
     'about.warning': 'Si vous êtes en danger immédiat, appelez les numéros d\'urgence locaux.',
 
     // Errors
@@ -800,7 +800,7 @@ const translations: Record<Language, Record<string, string>> = {
     'about.heroTitle': 'Le routage de soins d\'urgence simplifié',
     'about.heroSubtitle': 'Arrivez au bon hôpital, plus rapidement. Car en urgence, chaque minute compte.',
     'about.whatWeDo': 'Ce que nous faisons',
-    'about.whatWeDoDesc1': 'QuickER vous aide à atteindre l\'hôpital le plus rapide en utilisant le trafic en direct et le routage. Ce n\'est pas un substitut aux conseils médicaux professionnels ou aux services d\'urgence.',
+    'about.whatWeDoDesc1': 'QuickER compare les hôpitaux selon le meilleur temps routier disponible et indique clairement si le trafic en direct facultatif est actif. Il ne remplace pas un avis médical ni les services d\'urgence.',
     'about.whatWeDoDesc2': 'L\'application compare les temps routiers disponibles, les métadonnées publiques et les statuts de disponibilité de démonstration.',
     'about.whatWeDoDesc3': 'Nous agrégons les données de plusieurs sources pour vous assurer d\'obtenir les informations les plus précises et les plus récentes quand chaque minute compte.',
     'about.disclaimer': 'Avertissement important',
@@ -882,7 +882,7 @@ const translations: Record<Language, Record<string, string>> = {
     'privacy.sharing.thirdParty.title': 'Services tiers :',
     'privacy.sharing.thirdParty.item1': 'Fournisseurs de cartes et de navigation (pour les calculs de navigation)',
     'privacy.sharing.thirdParty.item2': 'Fonctions Cloudflare Pages facultatives protégeant les secrets des fournisseurs',
-    'privacy.sharing.thirdParty.item3': 'Gemini reçoit un résumé sans localisation uniquement si vous demandez une explication IA',
+    'privacy.sharing.thirdParty.item3': 'L’explication IA facultative s’exécute sur votre appareil ; seuls les fichiers du modèle sont téléchargés et le résumé reste dans votre navigateur',
     'privacy.sharing.emergency.title': 'Situations d\'urgence :',
     'privacy.sharing.emergency.desc': 'Cette version ne transmet pas l\'historique de localisation aux services d\'urgence ni aux partenaires de recherche.',
     'privacy.rights.title': 'Vos droits et contrôle',

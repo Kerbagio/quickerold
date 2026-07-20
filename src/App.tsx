@@ -32,7 +32,7 @@ const App = () => (
         <Toaster />
         <Sonner />
         <OfflineNotice />
-        <BrowserRouter>
+        <BrowserRouter basename={import.meta.env.BASE_URL}>
           <Suspense
             fallback={
               <div className="flex min-h-screen items-center justify-center text-sm text-muted-foreground">

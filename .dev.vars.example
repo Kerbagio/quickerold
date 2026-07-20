@@ -2,5 +2,3 @@
 # Leave any service blank to exercise QuickER's automatic fallback.
 TOMTOM_API_KEY=
 ORS_API_KEY=
-GEMINI_API_KEY=
-GEMINI_MODEL=gemini-3.5-flash

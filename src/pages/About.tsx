@@ -31,15 +31,13 @@ const About = () => {
     },
     {
       name: "TomTom",
-      purpose: "Optional live-traffic ETA matrix",
-      mode: "Free Evaluation quota",
-      url: "https://developer.tomtom.com",
+      purpose: "Future organization-managed live-traffic ETA matrix",
+      mode: "Not active on static demo",
     },
     {
       name: "openrouteservice",
-      purpose: "Optional 5/10/15-minute road contours",
-      mode: "Free Standard quota",
-      url: "https://openrouteservice.org",
+      purpose: "Future organization-managed 5/10/15-minute road contours",
+      mode: "Not active on static demo",
     },
   ];
 
@@ -52,7 +50,11 @@ const About = () => {
               <ArrowLeft className="mr-2 h-4 w-4" /> Back to Home
             </Link>
           </Button>
-          <img src="/logo-quicker.svg" alt="QuickER" className="h-8 w-auto" />
+          <img
+            src={`${import.meta.env.BASE_URL}logo-quicker.svg`}
+            alt="QuickER"
+            className="h-8 w-auto"
+          />
           <div className="w-28" />
         </div>
       </header>
@@ -136,11 +138,13 @@ const About = () => {
                 </div>
                 <div className="flex items-center gap-2">
                   <Badge variant="outline">{provider.mode}</Badge>
-                  <Button variant="ghost" size="icon" asChild>
-                    <a href={provider.url} target="_blank" rel="noopener noreferrer">
-                      <ExternalLink className="h-4 w-4" />
-                    </a>
-                  </Button>
+                  {provider.url ? (
+                    <Button variant="ghost" size="icon" asChild>
+                      <a href={provider.url} target="_blank" rel="noopener noreferrer">
+                        <ExternalLink className="h-4 w-4" />
+                      </a>
+                    </Button>
+                  ) : null}
                 </div>
               </div>
             ))}

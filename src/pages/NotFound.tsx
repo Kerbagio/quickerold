@@ -1,4 +1,4 @@
-import { useLocation } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Home, ArrowLeft } from "lucide-react";
@@ -28,10 +28,10 @@ const NotFound = () => {
         
         <div className="flex flex-col sm:flex-row gap-4 justify-center">
           <Button asChild>
-            <a href="/">
+            <Link to="/">
               <Home className="w-4 h-4" />
               Return Home
-            </a>
+            </Link>
           </Button>
           <Button variant="outline" onClick={() => window.history.back()}>
             <ArrowLeft className="w-4 h-4" />

@@ -1,11 +1,16 @@
 import type { DecisionRecord } from "@/services/analytics";
 
-export type AgentExplanationMode = "gemini" | "deterministic";
+export type AgentExplanationMode = "local-ai" | "deterministic";
 
 export interface AgentExplanation {
   text: string;
   mode: AgentExplanationMode;
   model?: string;
+}
+
+export interface AgentProgress {
+  label: string;
+  percent?: number;
 }
 
 export function deterministicExplanation(
@@ -22,29 +27,79 @@ export function deterministicExplanation(
   };
 }
 
+export function isSafeModelExplanation(
+  text: string,
+  decision: DecisionRecord,
+): boolean {
+  const normalized = text.trim().toLocaleLowerCase();
+  const hospitalName = decision.recommendedHospital.trim().toLocaleLowerCase();
+  const unsafeClaim =
+    /\b(diagnos\w*|treat\w*|medicat\w*|guarantee\w*|cure\w*|definitely safe)\b/i;
+
+  return (
+    normalized.length >= 20 &&
+    normalized.length <= 700 &&
+    normalized.includes(hospitalName) &&
+    normalized.includes(String(decision.etaMinutes)) &&
+    !unsafeClaim.test(normalized)
+  );
+}
+
 export async function explainDecision(
   decision: DecisionRecord,
+  onProgress?: (progress: AgentProgress) => void,
 ): Promise<AgentExplanation> {
-  try {
-    const response = await fetch("/api/agent", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ decision }),
-    });
-    if (!response.ok) throw new Error("AI explanation unavailable");
+  return new Promise((resolve) => {
+    const fallback = () => resolve(deterministicExplanation(decision));
 
-    const payload = (await response.json()) as {
-      explanation?: string;
-      model?: string;
-    };
-    if (!payload.explanation?.trim()) throw new Error("Empty AI explanation");
+    try {
+      const worker = new Worker(
+        new URL("../workers/agent.worker.ts", import.meta.url),
+        { type: "module" },
+      );
+      const timeout = window.setTimeout(() => {
+        worker.terminate();
+        fallback();
+      }, 300_000);
 
-    return {
-      text: payload.explanation.trim(),
-      mode: "gemini",
-      model: payload.model,
-    };
-  } catch {
-    return deterministicExplanation(decision);
-  }
+      worker.onmessage = (
+        event: MessageEvent<
+          | { type: "progress"; label: string; percent?: number }
+          | { type: "complete"; text: string; model: string }
+          | { type: "error" }
+        >,
+      ) => {
+        if (event.data.type === "progress") {
+          onProgress?.({
+            label: event.data.label,
+            percent: event.data.percent,
+          });
+          return;
+        }
+
+        window.clearTimeout(timeout);
+        worker.terminate();
+        if (
+          event.data.type === "complete" &&
+          isSafeModelExplanation(event.data.text, decision)
+        ) {
+          resolve({
+            text: event.data.text.trim(),
+            mode: "local-ai",
+            model: event.data.model,
+          });
+          return;
+        }
+        fallback();
+      };
+      worker.onerror = () => {
+        window.clearTimeout(timeout);
+        worker.terminate();
+        fallback();
+      };
+      worker.postMessage({ decision });
+    } catch {
+      fallback();
+    }
+  });
 }

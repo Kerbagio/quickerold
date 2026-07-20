@@ -20,6 +20,7 @@ import {
   deterministicExplanation,
   explainDecision,
   type AgentExplanation,
+  type AgentProgress,
 } from "@/services/agent";
 
 const HealthAssistant = () => {
@@ -29,11 +30,14 @@ const HealthAssistant = () => {
     latestDecision ? deterministicExplanation(latestDecision) : null,
   );
   const [isExplaining, setIsExplaining] = useState(false);
+  const [progress, setProgress] = useState<AgentProgress | null>(null);
 
   const generateExplanation = async () => {
     if (!latestDecision) return;
     setIsExplaining(true);
-    setExplanation(await explainDecision(latestDecision));
+    setProgress({ label: "Starting the private on-device model…" });
+    setExplanation(await explainDecision(latestDecision, setProgress));
+    setProgress(null);
     setIsExplaining(false);
   };
 
@@ -116,8 +120,8 @@ const HealthAssistant = () => {
               </div>
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <Badge variant="outline">
-                  {explanation?.mode === "gemini"
-                    ? `Gemini AI${explanation.model ? ` • ${explanation.model}` : ""}`
+                  {explanation?.mode === "local-ai"
+                    ? `On-device AI${explanation.model ? ` • ${explanation.model}` : ""}`
                     : "Deterministic fallback"}
                 </Badge>
                 <Button
@@ -127,9 +131,26 @@ const HealthAssistant = () => {
                   disabled={isExplaining}
                 >
                   <Sparkles className={`mr-2 h-4 w-4 ${isExplaining ? "animate-pulse" : ""}`} />
-                  {isExplaining ? "Generating…" : "Explain with free AI"}
+                  {isExplaining ? "Generating…" : "Run free on-device AI"}
                 </Button>
               </div>
+              {progress ? (
+                <div className="space-y-2" aria-live="polite">
+                  <div className="h-2 overflow-hidden rounded-full bg-muted">
+                    <div
+                      className={`h-full rounded-full bg-primary transition-all ${
+                        progress.percent === undefined ? "w-1/3 animate-pulse" : ""
+                      }`}
+                      style={
+                        progress.percent === undefined
+                          ? undefined
+                          : { width: `${progress.percent}%` }
+                      }
+                    />
+                  </div>
+                  <p className="text-xs text-muted-foreground">{progress.label}</p>
+                </div>
+              ) : null}
               <p className="text-xs text-muted-foreground">
                 Availability is a demo feed unless explicitly connected to an authorized hospital system. Specialty metadata must be confirmed with the facility.
               </p>
@@ -153,13 +174,13 @@ const HealthAssistant = () => {
             <div>
               <div className="mb-2 flex items-center gap-2">
                 <BrainCircuit className="h-5 w-5" />
-                <h2 className="text-xl font-semibold">Optional free AI layer</h2>
+                <h2 className="text-xl font-semibold">Private, account-free AI layer</h2>
               </div>
               <p className="max-w-3xl text-sm text-muted-foreground">
-                Gemini converts only the non-location decision summary into a natural explanation through a Cloudflare Pages Function. The rules engine remains responsible for eligibility and routing, so the app still functions when AI is unconfigured or its free quota is unavailable.
+                An open FLAN-T5 model runs in a browser worker, so the decision summary is not sent to an AI API. The first run downloads about 100 MB and may be slow, then the browser can reuse its cache. The safety rules remain responsible for eligibility and routing, and a deterministic explanation takes over if the model cannot load or adds unsupported claims.
               </p>
             </div>
-            <Badge variant="outline">Free-tier optional</Badge>
+            <Badge variant="outline">$0 • no key • on-device</Badge>
           </div>
         </Card>
 

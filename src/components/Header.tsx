@@ -12,7 +12,7 @@ const Header = () => {
         <div className={`flex items-center justify-between ${language === 'ar' ? 'flex-row-reverse' : ''}`}>
           <Link to="/home" className="flex items-center space-x-3">
             <img 
-              src="/logo-quicker.svg" 
+              src={`${import.meta.env.BASE_URL}logo-quicker.svg`}
               alt="QuickER Logo" 
               className="h-8 w-auto"
             />

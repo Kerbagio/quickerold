@@ -22,83 +22,93 @@ interface OverpassResponse {
   elements?: OverpassElement[];
 }
 
-const OVERPASS_ENDPOINTS = [
-  "https://overpass-api.de/api/interpreter",
-  "https://overpass.kumi.systems/api/interpreter",
-];
+interface HospitalCacheEntry {
+  expiresAt: number;
+  hospitals: OSMHospital[];
+}
 
-const REQUEST_TIMEOUT_MS = 6500;
-const MAX_ATTEMPTS = 2;
+const CACHE_TTL_MS = 5 * 60 * 1000;
+const REQUEST_TIMEOUT_MS = 8_000;
+const hospitalCache = new Map<string, HospitalCacheEntry>();
+const pendingRequests = new Map<string, Promise<OSMHospital[]>>();
 
-const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+function searchKey(lat: number, lng: number, radiusKm: number): string {
+  return `${lat.toFixed(5)}:${lng.toFixed(5)}:${radiusKm.toFixed(1)}`;
+}
 
-const fetchFromEndpoint = async (
+async function fetchWithTimeout(
   endpoint: string,
   query: string,
-): Promise<OSMHospital[]> => {
+): Promise<Response> {
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+  const timeout = globalThis.setTimeout(
+    () => controller.abort(),
+    REQUEST_TIMEOUT_MS,
+  );
 
   try {
-    const response = await fetch(endpoint, {
+    return await fetch(endpoint, {
       method: "POST",
-      headers: { "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8" },
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
+      },
       body: `data=${encodeURIComponent(query)}`,
       signal: controller.signal,
     });
-
-    if (!response.ok) {
-      throw new Error(`Overpass request failed with ${response.status}`);
-    }
-
-    const data = (await response.json()) as OverpassResponse;
-    const elements = data.elements ?? [];
-
-    return elements
-      .map((element) => {
-        const center =
-          element.type === "node"
-            ? { lat: element.lat, lon: element.lon }
-            : element.center;
-
-        if (!center?.lat || !center?.lon) return null;
-
-        return {
-          id: `${element.type}-${element.id}`,
-          name: element.tags?.name || "Unnamed Hospital",
-          lat: center.lat,
-          lng: center.lon,
-          tags: element.tags || {},
-        } as OSMHospital;
-      })
-      .filter((hospital): hospital is OSMHospital => Boolean(hospital));
   } finally {
-    clearTimeout(timeoutId);
+    globalThis.clearTimeout(timeout);
   }
-};
+}
 
-const deduplicateHospitals = (hospitals: OSMHospital[]) => {
-  const seen = new Set<string>();
+function firstSuccessful<T>(requests: Promise<T>[]): Promise<T> {
+  return new Promise((resolve, reject) => {
+    let failedRequests = 0;
 
-  return hospitals.filter((hospital) => {
-    const key = `${hospital.id}:${hospital.lat.toFixed(5)}:${hospital.lng.toFixed(5)}`;
-    if (seen.has(key)) return false;
-    seen.add(key);
-    return true;
+    requests.forEach((request) => {
+      request.then(resolve).catch(() => {
+        failedRequests += 1;
+        if (failedRequests === requests.length) {
+          reject(new Error("All hospital-data providers failed"));
+        }
+      });
+    });
   });
-};
+}
 
-// Fetch hospitals near a coordinate using both free Overpass providers.
-// Providers are queried in parallel and the whole operation retries only once.
-export async function fetchHospitalsFromOSM(
+async function fetchHospitalsFromProvider(
+  endpoint: string,
+  query: string,
+): Promise<OSMHospital[]> {
+  const res = await fetchWithTimeout(endpoint, query);
+  if (!res.ok) throw new Error(`Provider returned ${res.status}`);
+
+  const data = (await res.json()) as OverpassResponse;
+  const hospitals: OSMHospital[] = (data.elements ?? []).flatMap((el) => {
+    const center = el.type === "node" ? { lat: el.lat, lon: el.lon } : el.center;
+    if (!center || center.lat == null || center.lon == null) return [];
+    return [
+      {
+        id: `${el.type}-${el.id}`,
+        name: el.tags?.name || "Unnamed Hospital",
+        lat: center.lat,
+        lng: center.lon,
+        tags: el.tags || {},
+      } satisfies OSMHospital,
+    ];
+  });
+
+  return [
+    ...new Map(hospitals.map((hospital) => [hospital.id, hospital])).values(),
+  ];
+}
+
+async function loadHospitalsFromProviders(
   lat: number,
   lng: number,
-  radiusKm: number,
+  radiusMeters: number,
 ): Promise<OSMHospital[]> {
-  const radiusMeters = Math.min(Math.max(Math.round(radiusKm * 1000), 300), 25000);
-
   const query = `
-    [out:json][timeout:15];
+    [out:json][timeout:10];
     (
       nwr["amenity"="hospital"](around:${radiusMeters},${lat},${lng});
       nwr["healthcare"="hospital"](around:${radiusMeters},${lat},${lng});
@@ -106,28 +116,54 @@ export async function fetchHospitalsFromOSM(
     out center tags 50;
   `;
 
-  for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt += 1) {
-    const results = await Promise.allSettled(
-      OVERPASS_ENDPOINTS.map((endpoint) => fetchFromEndpoint(endpoint, query)),
-    );
+  const endpoints = [
+    "https://overpass.kumi.systems/api/interpreter",
+    "https://overpass-api.de/api/interpreter",
+  ];
 
-    const successfulResults = results
-      .filter((result): result is PromiseFulfilledResult<OSMHospital[]> => result.status === "fulfilled")
-      .flatMap((result) => result.value);
-
-    if (successfulResults.length > 0) {
-      return deduplicateHospitals(successfulResults);
-    }
-
-    const everyProviderResponded = results.every((result) => result.status === "fulfilled");
-    if (everyProviderResponded) {
-      return [];
-    }
-
-    if (attempt < MAX_ATTEMPTS - 1) {
-      await wait(350);
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    try {
+      return await firstSuccessful(
+        endpoints.map((endpoint) =>
+          fetchHospitalsFromProvider(endpoint, query),
+        ),
+      );
+    } catch {
+      if (attempt === 0) {
+        await new Promise((resolve) => globalThis.setTimeout(resolve, 300));
+      }
     }
   }
 
-  return [];
+  throw new Error("OpenStreetMap Overpass providers are unavailable");
+}
+
+// Fetch hospitals near a coordinate using Overpass API (free)
+export async function fetchHospitalsFromOSM(
+  lat: number,
+  lng: number,
+  radiusKm: number,
+): Promise<OSMHospital[]> {
+  const radiusMeters = Math.min(
+    Math.max(Math.round(radiusKm * 1000), 300),
+    25000,
+  );
+  const key = searchKey(lat, lng, radiusMeters / 1000);
+  const cached = hospitalCache.get(key);
+  if (cached && cached.expiresAt > Date.now()) return cached.hospitals;
+
+  const pending = pendingRequests.get(key);
+  if (pending) return pending;
+
+  const request = loadHospitalsFromProviders(lat, lng, radiusMeters)
+    .then((hospitals) => {
+      hospitalCache.set(key, {
+        hospitals,
+        expiresAt: Date.now() + CACHE_TTL_MS,
+      });
+      return hospitals;
+    })
+    .finally(() => pendingRequests.delete(key));
+  pendingRequests.set(key, request);
+  return request;
 }

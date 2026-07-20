@@ -5,7 +5,7 @@ Use this as the recording plan for a two-minute landscape demo. The official [su
 ## Recording preflight
 
 - Record the deployed GitHub Pages build in a 16:9 browser window.
-- Run the full sequence once before recording. On the Agent page, click **Run free on-device AI** so the roughly 100 MB model is already cached.
+- Run the full sequence once before recording. Generate the Decision Brief on Home so the roughly 100 MB model is already cached.
 - Confirm the AI result badge says **On-device AI**. If it says **Deterministic fallback**, refresh and retry before recording; never call a fallback result AI-generated.
 - Use the labelled Beirut demo point so the route is reproducible and no personal location appears in the video.
 - Keep the ETA source badge visible. On the static $0 build, describe it as road-network ETA—not live traffic.
@@ -21,37 +21,37 @@ Use this as the recording plan for a two-minute landscape demo. The official [su
 
 **Say:** “In an emergency, the hospital that is closest by distance may not be the fastest suitable option by road. QuickER compares road travel time, specialty metadata, and availability status to make that decision clearer.”
 
-### 0:12–0:36 — Real hospital search and ranking
+### 0:12–0:34 — Real hospital search and ranking
 
 **Do:** Select **Use Beirut demo point** and wait for the ranked results.
 
 **Say:** “I’ll use the clearly labelled Beirut presentation point. QuickER discovers real hospital map records from OpenStreetMap, calculates road ETAs through OSRM, and ranks the suitable candidates. Every result exposes its source. This availability feed is simulated for the prototype, so I’m not claiming access to live hospital capacity.”
 
-### 0:36–0:54 — Recommended road route
+### 0:34–0:55 — Prove closest is not always fastest
 
-**Do:** Open the recommended route and briefly scroll through the alternatives.
+**Do:** Keep the closest/fastest/suitable evidence card visible, then open the recommended route.
 
-**Say:** “The fastest eligible option is highlighted with its road route, ETA, distance, specialty metadata, and alternatives. A user can hand the destination to navigation, while QuickER stays transparent when routing falls back to an estimate.”
+**Say:** “QuickER does not just announce a result. It compares the closest route, the fastest ETA, and the fastest suitable hospital. Here the evidence shows exactly whether road travel time changes the recommendation, while source and uncertainty remain visible.”
 
-### 0:54–1:13 — Automatic rerouting scenario
+### 0:55–1:17 — AI explains; the engine decides
 
-**Do:** Open **Dashboard** and select **Run rerouting demo**.
+**Do:** Select **Generate AI Decision Brief**. Keep the completed brief and **On-device AI · validated** badge visible.
 
-**Say:** “Here is the decision agent reacting to a status change. When the first facility becomes diverting in the simulator, QuickER evaluates the list again and moves an accepting alternative ahead of it. The dashboard is built from local summaries and stores no precise coordinates.”
+**Say:** “After the deterministic routing engine chooses the hospital, an open model explains the verified facts inside the browser with no API key. It receives no precise location, cannot change the hospital, and its answer is validated. If it fails, QuickER immediately uses a deterministic brief.”
 
-### 1:13–1:30 — Specialty and accessibility view
+### 1:17–1:43 — Availability rerouting Scenario Lab
 
-**Do:** Open **Emergency Options**, change the emergency type, and show the 5/10/15-minute layers.
+**Do:** Open **Scenario**, run **Run rerouting scenario**, and pause on the completed before/event/after comparison.
 
-**Say:** “Emergency Options filters by available specialty metadata and visualizes five, ten, and fifteen-minute reach. The free static build labels these as estimated areas; an authorized road-isochrone integration can replace them later.”
+**Say:** “Now I stress-test the same decision. This clearly labelled simulated feed marks the first facility as diverting. QuickER reruns the real suitability and ETA ranking, selects the next eligible option, and exposes the extra travel-time trade-off instead of hiding it.”
 
-### 1:30–1:50 — Typed agent visibly working
+### 1:43–1:53 — Accessibility and impact evidence
 
-**Do:** Open **Agent**, type **Why was this hospital recommended?**, and press Enter. Keep the immediate verified answer, Agent Activity trace, model progress, and final **On-device AI** badge visible.
+**Do:** Briefly show the Scenario access filters and then open **Dashboard**.
 
-**Say:** “The typed dispatch agent classifies my routing request, loads only the local decision summary, and returns a verified answer immediately. An open FLAN-T5 model then refines eligible explanations inside the browser without a key or paid API. The visible trace shows its actions and validation, and QuickER rejects output that drops required facts or adds unsupported medical claims.”
+**Say:** “Accessibility evidence separates explicit public tags from unknown data. The dashboard records only location-free decision summaries and reports potential time difference—not invented patient outcomes.”
 
-### 1:50–2:00 — Honest $0 close
+### 1:53–2:00 — Honest $0 close
 
 **Do:** Open **About** and show the free architecture and limitations.
 
@@ -61,9 +61,10 @@ Use this as the recording plan for a two-minute landscape demo. The official [su
 
 1. **Find Hospital:** ranked results after the Beirut demo point, including the recommended hospital and ETA source badge.
 2. **Route:** highlighted road route with the alternatives list visible.
-3. **Dashboard:** rerouting scenario after the first facility becomes diverting.
-4. **Emergency Options:** specialty filter and 5/10/15-minute accessibility layers, including the estimate label.
-5. **Agent:** typed request, completed explanation, activity trace, and **On-device AI** badge visible.
+3. **Decision evidence:** closest route, fastest ETA, and fastest suitable comparison.
+4. **Decision Brief:** completed explanation with the validated **On-device AI** badge.
+5. **Scenario Lab:** before/event/after rerouting result and the access-evidence map.
+6. **Dashboard:** potential time difference and public metadata coverage with the limitation notice visible.
 
 Do not submit AI-generated interface images, stock images, design concepts, or screenshots of code without the working app. Crop only for privacy or empty browser chrome; do not edit the interface result.
 

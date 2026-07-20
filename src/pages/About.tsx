@@ -1,9 +1,12 @@
 import { Link } from "react-router-dom";
 import {
   ArrowLeft,
+  BrainCircuit,
   CheckCircle2,
   Clock,
   ExternalLink,
+  FlaskConical,
+  GitCompareArrows,
   MapPin,
   Shield,
   WalletCards,
@@ -12,6 +15,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { useLanguage } from "@/contexts/LanguageContext";
+import Layout from "@/components/Layout";
 
 const About = () => {
   const { language } = useLanguage();
@@ -42,24 +46,18 @@ const About = () => {
   ];
 
   return (
-    <div className={`min-h-screen bg-background ${language === "ar" ? "rtl" : ""}`}>
-      <header className="border-b bg-background">
-        <div className="container mx-auto flex items-center justify-between px-4 py-4 sm:px-6">
-          <Button variant="ghost" asChild>
-            <Link to="/home">
-              <ArrowLeft className="mr-2 h-4 w-4" /> Back to Home
-            </Link>
-          </Button>
-          <img
-            src={`${import.meta.env.BASE_URL}logo-quicker.svg`}
-            alt="QuickER"
-            className="h-8 w-auto"
-          />
-          <div className="w-28" />
-        </div>
-      </header>
+    <Layout>
+      <main
+        className={`container mx-auto max-w-4xl space-y-8 px-4 py-10 sm:px-6 ${
+          language === "ar" ? "rtl" : ""
+        }`}
+      >
+        <Button variant="ghost" asChild>
+          <Link to="/home">
+            <ArrowLeft className="mr-2 h-4 w-4" /> Back to Home
+          </Link>
+        </Button>
 
-      <main className="container mx-auto max-w-4xl space-y-8 px-4 py-10 sm:px-6">
         <div className="text-center">
           <Badge className="mb-4" variant="secondary">
             Free-first emergency access project
@@ -85,7 +83,7 @@ const About = () => {
               "No automatic paid overages",
               "No precise coordinates in decision history",
               "Provider and timestamp shown with each ETA",
-              "Usable road estimates when live traffic is unavailable",
+              "On-device AI explanation with no API key",
             ].map((item) => (
               <div key={item} className="flex gap-2 rounded-xl bg-muted/40 p-3 text-sm">
                 <CheckCircle2 className="h-4 w-4 shrink-0 text-success" /> {item}
@@ -99,30 +97,60 @@ const About = () => {
             <Clock className="h-6 w-6 text-primary" />
             <h2 className="text-2xl font-semibold">How a search works</h2>
           </div>
-          <div className="grid gap-5 md:grid-cols-3">
-            <div>
+          <div className="grid gap-5 sm:grid-cols-2">
+            <div className="rounded-2xl border bg-muted/20 p-4">
               <MapPin className="mb-3 h-6 w-6 text-primary" />
               <h3 className="font-semibold">1. Discover</h3>
               <p className="mt-1 text-sm text-muted-foreground">
                 Find nearby hospitals from OpenStreetMap and apply the selected emergency filter.
               </p>
             </div>
-            <div>
+            <div className="rounded-2xl border bg-muted/20 p-4">
               <Clock className="mb-3 h-6 w-6 text-primary" />
               <h3 className="font-semibold">2. Compare</h3>
               <p className="mt-1 text-sm text-muted-foreground">
                 Narrow candidates by road ETA and optionally compare the fastest five with live traffic.
               </p>
             </div>
-            <div>
-              <Shield className="mb-3 h-6 w-6 text-primary" />
-              <h3 className="font-semibold">3. Explain</h3>
+            <div className="rounded-2xl border bg-muted/20 p-4">
+              <GitCompareArrows className="mb-3 h-6 w-6 text-primary" />
+              <h3 className="font-semibold">3. Prove</h3>
               <p className="mt-1 text-sm text-muted-foreground">
-                Prefer eligible facilities, show the recommendation and disclose every uncertainty.
+                Show whether the closest route is really the fastest and disclose any availability trade-off.
+              </p>
+            </div>
+            <div className="rounded-2xl border bg-muted/20 p-4">
+              <Shield className="mb-3 h-6 w-6 text-primary" />
+              <h3 className="font-semibold">4. Explain</h3>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Let the on-device model explain verified routing facts without changing the selected hospital.
               </p>
             </div>
           </div>
         </Card>
+
+        <div className="grid gap-5 md:grid-cols-2">
+          <Card className="border-accent/30 bg-accent/5 p-7">
+            <BrainCircuit className="mb-4 h-7 w-7 text-accent" />
+            <Badge variant="outline" className="mb-3 border-accent/30 text-accent">
+              Responsible AI
+            </Badge>
+            <h2 className="text-2xl font-semibold">Decision Brief</h2>
+            <p className="mt-3 text-sm text-muted-foreground">
+              FLAN-T5 runs in the browser and receives only structured, non-location routing facts. Its output is checked before display, and a deterministic explanation is always ready.
+            </p>
+          </Card>
+          <Card className="border-warning/30 bg-warning/5 p-7">
+            <FlaskConical className="mb-4 h-7 w-7 text-warning" />
+            <Badge variant="outline" className="mb-3 border-warning/30 text-warning">
+              Clearly simulated
+            </Badge>
+            <h2 className="text-2xl font-semibold">Scenario Lab</h2>
+            <p className="mt-3 text-sm text-muted-foreground">
+              A controlled availability update reruns the real ranking pipeline, making resilience visible without claiming access to live hospital capacity.
+            </p>
+          </Card>
+        </div>
 
         <Card className="p-7">
           <h2 className="mb-5 text-2xl font-semibold">Free data providers</h2>
@@ -165,7 +193,7 @@ const About = () => {
           </ul>
         </Card>
       </main>
-    </div>
+    </Layout>
   );
 };
 

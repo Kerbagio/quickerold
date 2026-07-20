@@ -1,4 +1,4 @@
-import { Home, Settings, BarChart3, Filter, BrainCircuit } from "lucide-react";
+import { Home, Settings, BarChart3, FlaskConical } from "lucide-react";
 import { useLocation, Link } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -16,15 +16,9 @@ const BottomNav = () => {
     },
     { 
       path: "/options", 
-      icon: Filter, 
-      label: t('nav.options'),
+      icon: FlaskConical,
+      label: t('nav.scenario'),
       isActive: location.pathname === "/options"
-    },
-    { 
-      path: "/health-assistant", 
-      icon: BrainCircuit,
-      label: "Agent",
-      isActive: location.pathname === "/health-assistant"
     },
     { 
       path: "/dashboard", 
@@ -51,14 +45,21 @@ const BottomNav = () => {
   }
 
   return (
-    <nav className={`fixed bottom-0 left-0 right-0 bg-background border-t border-border safe-area-bottom ${language === 'ar' ? 'rtl' : ''}`}>
-      <div className="flex items-center justify-around py-2 px-4 max-w-md mx-auto">
+    <nav
+      aria-label="Primary navigation"
+      className={`fixed bottom-0 left-0 right-0 z-[2000] border-t border-border/80 bg-background/95 shadow-[0_-10px_30px_-18px_hsl(var(--foreground)/0.45)] backdrop-blur-xl supports-[backdrop-filter]:bg-background/85 ${language === 'ar' ? 'rtl' : ''}`}
+    >
+      <div
+        className="mx-auto flex max-w-md items-center justify-around px-2 pt-2"
+        style={{ paddingBottom: "max(0.5rem, var(--safe-bottom))" }}
+      >
         {navItems.map((item) => (
           <Link
             key={item.path}
             to={item.path}
+            aria-current={item.isActive ? "page" : undefined}
             className={cn(
-              "flex flex-col items-center p-2 rounded-xl transition-colors min-w-0 flex-1",
+              "flex min-w-0 flex-1 flex-col items-center rounded-xl p-2 transition-colors",
               item.isActive
                 ? "text-primary bg-primary/10"
                 : "text-muted-foreground hover:text-foreground"

@@ -83,10 +83,10 @@ All colors MUST be HSL.
     --background: 220 13% 9%;
     --foreground: 0 0% 98%;
 
-    --card: 220 13% 9%;
+    --card: 220 13% 12%;
     --card-foreground: 0 0% 98%;
 
-    --popover: 220 13% 9%;
+    --popover: 220 13% 12%;
     --popover-foreground: 0 0% 98%;
 
     --primary: 0 84% 50%;
@@ -104,8 +104,8 @@ All colors MUST be HSL.
     --destructive: 0 84% 50%;
     --destructive-foreground: 0 0% 98%;
 
-    --border: 220 13% 17%;
-    --input: 220 13% 17%;
+    --border: 220 13% 22%;
+    --input: 220 13% 22%;
     --ring: 0 84% 50%;
 
     --sidebar-background: 220 13% 9%;
@@ -116,6 +116,9 @@ All colors MUST be HSL.
     --sidebar-accent-foreground: 220 14% 96%;
     --sidebar-border: 220 13% 15%;
     --sidebar-ring: 0 84% 50%;
+
+    --hero-gradient: linear-gradient(135deg, hsl(220 13% 12%), hsl(0 42% 16%));
+    --shadow-soft: 0 4px 24px -6px hsl(0 0% 0% / 0.45);
   }
 }
 
@@ -130,6 +133,7 @@ All colors MUST be HSL.
     line-height: 1.6;
     /* Fix mobile 100vh issues */
     min-height: 100dvh;
+    overflow-x: hidden;
   }
   
   h1, h2, h3, h4, h5, h6 {

@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
+import { useTheme } from "next-themes";
 import type { AvailabilityStatus } from "@/services/availability";
 import { availabilityLabel } from "@/services/availability";
 import {
@@ -26,6 +27,7 @@ import {
   type IsochroneSource,
 } from "@/services/isochrones";
 import type { Coordinate, EtaSource } from "@/services/routing";
+import { usePageMemory } from "@/hooks/usePageMemory";
 
 interface HospitalMapItem {
   id: string;
@@ -40,11 +42,13 @@ interface HospitalMapItem {
 }
 
 interface MapProps {
+  memoryKey: string;
   className?: string;
   showUserLocation?: boolean;
   showIsochrones?: boolean;
   hospitals?: HospitalMapItem[];
   userLocation?: Coordinate | null;
+  searchRadiusKm?: number;
   onLocationSelect?: (lat: number, lng: number) => void;
   onIsochroneSourceChange?: (source: IsochroneSource) => void;
 }
@@ -75,20 +79,24 @@ interface OsrmRouteResponse {
 
 interface RoutePanelState {
   hospital: HospitalMapItem | null;
+  routeOrigin: Coordinate | null;
   loading: boolean;
   error: string | null;
   roadDistanceKm: number | null;
   roadDurationMinutes: number | null;
   directions: string[];
+  routeCoordinates: Array<[number, number]>;
 }
 
 const defaultRoutePanel: RoutePanelState = {
   hospital: null,
+  routeOrigin: null,
   loading: false,
   error: null,
   roadDistanceKm: null,
   roadDurationMinutes: null,
   directions: [],
+  routeCoordinates: [],
 };
 
 const sourceLabel: Record<EtaSource, string> = {
@@ -102,6 +110,10 @@ const isochroneColors: Record<number, string> = {
   10: "#f59e0b",
   15: "#ef4444",
 };
+
+function tileUrl(dark: boolean): string {
+  return `https://{s}.basemaps.cartocdn.com/${dark ? "dark_all" : "light_all"}/{z}/{x}/{y}{r}.png`;
+}
 
 function directionLabel(step: {
   name?: string;
@@ -120,16 +132,19 @@ function directionLabel(step: {
 const Map = forwardRef<MapRef, MapProps>(
   (
     {
+      memoryKey,
       className,
       showUserLocation = true,
       showIsochrones = false,
       hospitals = [],
       userLocation,
+      searchRadiusKm,
       onLocationSelect,
       onIsochroneSourceChange,
     },
     ref,
   ) => {
+    const { resolvedTheme } = useTheme();
     const mapContainerRef = useRef<HTMLDivElement>(null);
     const mapRef = useRef<L.Map | null>(null);
     const userLocationRef = useRef<Coordinate | null>(null);
@@ -137,11 +152,15 @@ const Map = forwardRef<MapRef, MapProps>(
     const hospitalLayerRef = useRef<L.LayerGroup | null>(null);
     const routeLayerRef = useRef<L.LayerGroup | null>(null);
     const isochroneLayerRef = useRef<L.LayerGroup | null>(null);
+    const searchRadiusLayerRef = useRef<L.LayerGroup | null>(null);
+    const tileLayerRef = useRef<L.TileLayer | null>(null);
     const onLocationSelectRef = useRef(onLocationSelect);
     const onIsochroneSourceChangeRef = useRef(onIsochroneSourceChange);
     const [mapReady, setMapReady] = useState(false);
-    const [routePanel, setRoutePanel] =
-      useState<RoutePanelState>(defaultRoutePanel);
+    const [routePanel, setRoutePanel] = usePageMemory<RoutePanelState>(
+      `${memoryKey}.routePanel`,
+      defaultRoutePanel,
+    );
 
     useEffect(() => {
       onLocationSelectRef.current = onLocationSelect;
@@ -225,6 +244,7 @@ const Map = forwardRef<MapRef, MapProps>(
       setRoutePanel({
         ...defaultRoutePanel,
         hospital,
+        routeOrigin: origin,
         loading: true,
       });
 
@@ -251,24 +271,19 @@ const Map = forwardRef<MapRef, MapProps>(
           throw new Error("no route returned");
         }
 
-        layer.clearLayers();
-        const path = L.polyline(
-          routeCoordinates.map(([lng, lat]) => [lat, lng] as [number, number]),
-          { color: "#dc2626", weight: 6, opacity: 0.88 },
-        ).addTo(layer);
-        map.fitBounds(path.getBounds(), { padding: [32, 32] });
-
         const directions = (route.legs?.[0]?.steps ?? [])
           .filter((step) => (step.distance ?? 0) > 20)
           .slice(0, 10)
           .map(directionLabel);
         setRoutePanel({
           hospital,
+          routeOrigin: origin,
           loading: false,
           error: null,
           roadDistanceKm: route.distance / 1000,
           roadDurationMinutes: Math.max(1, Math.ceil(route.duration / 60)),
           directions,
+          routeCoordinates,
         });
       } catch {
         setRoutePanel((current) => ({
@@ -278,7 +293,7 @@ const Map = forwardRef<MapRef, MapProps>(
             "The public route service is unavailable. You can still open this hospital in your navigation app.",
         }));
       }
-    }, []);
+    }, [setRoutePanel]);
 
     useEffect(() => {
       if (!mapContainerRef.current || mapRef.current) return;
@@ -287,7 +302,8 @@ const Map = forwardRef<MapRef, MapProps>(
         [33.8938, 35.5018],
         12,
       );
-      L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png", {
+      const startsDark = document.documentElement.classList.contains("dark");
+      tileLayerRef.current = L.tileLayer(tileUrl(startsDark), {
         attribution: "&copy; OpenStreetMap contributors &copy; CARTO",
         maxZoom: 19,
       }).addTo(map);
@@ -297,13 +313,20 @@ const Map = forwardRef<MapRef, MapProps>(
       hospitalLayerRef.current = L.layerGroup().addTo(map);
       routeLayerRef.current = L.layerGroup().addTo(map);
       isochroneLayerRef.current = L.layerGroup().addTo(map);
+      searchRadiusLayerRef.current = L.layerGroup().addTo(map);
       setMapReady(true);
 
       return () => {
         map.remove();
         mapRef.current = null;
+        tileLayerRef.current = null;
       };
     }, []);
+
+    useEffect(() => {
+      if (!resolvedTheme || !tileLayerRef.current) return;
+      tileLayerRef.current.setUrl(tileUrl(resolvedTheme === "dark"));
+    }, [mapReady, resolvedTheme]);
 
     useEffect(() => {
       if (!mapReady || !userLocation || !showUserLocation) return;
@@ -317,6 +340,28 @@ const Map = forwardRef<MapRef, MapProps>(
       showUserLocation,
       userLocation,
     ]);
+
+    useEffect(() => {
+      const layer = searchRadiusLayerRef.current;
+      if (!mapReady || !layer) return;
+      layer.clearLayers();
+      if (!userLocation || !searchRadiusKm) return;
+
+      const boundary = L.circle([userLocation.lat, userLocation.lng], {
+        color: "#2563eb",
+        fill: false,
+        opacity: 0.9,
+        weight: 2,
+        dashArray: "7 7",
+        radius: searchRadiusKm * 1000,
+      })
+        .bindTooltip(`${searchRadiusKm} km hospital search boundary`)
+        .addTo(layer);
+      mapRef.current?.fitBounds(boundary.getBounds(), {
+        padding: [24, 24],
+        maxZoom: 14,
+      });
+    }, [mapReady, searchRadiusKm, userLocation]);
 
     useEffect(() => {
       const layer = hospitalLayerRef.current;
@@ -346,6 +391,43 @@ const Map = forwardRef<MapRef, MapProps>(
         marker.on("click", () => void loadRoute(hospital));
       });
     }, [hospitals, loadRoute, mapReady]);
+
+    useEffect(() => {
+      if (!routePanel.hospital) return;
+      const hospitalStillListed = hospitals.some(
+        (hospital) => hospital.id === routePanel.hospital?.id,
+      );
+      const originStillCurrent =
+        !routePanel.routeOrigin ||
+        (userLocation?.lat === routePanel.routeOrigin.lat &&
+          userLocation?.lng === routePanel.routeOrigin.lng);
+      if (hospitalStillListed && originStillCurrent) return;
+
+      routeLayerRef.current?.clearLayers();
+      setRoutePanel(defaultRoutePanel);
+    }, [
+      hospitals,
+      routePanel.hospital,
+      routePanel.routeOrigin,
+      setRoutePanel,
+      userLocation,
+    ]);
+
+    useEffect(() => {
+      const map = mapRef.current;
+      const layer = routeLayerRef.current;
+      if (!mapReady || !map || !layer) return;
+
+      layer.clearLayers();
+      if (!routePanel.routeCoordinates.length) return;
+      const path = L.polyline(
+        routePanel.routeCoordinates.map(
+          ([lng, lat]) => [lat, lng] as [number, number],
+        ),
+        { color: "#dc2626", weight: 6, opacity: 0.88 },
+      ).addTo(layer);
+      map.fitBounds(path.getBounds(), { padding: [32, 32] });
+    }, [mapReady, routePanel.routeCoordinates]);
 
     useEffect(() => {
       const map = mapRef.current;

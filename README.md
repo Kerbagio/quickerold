@@ -12,9 +12,11 @@ QuickER ranks nearby hospitals by the fastest suitable travel option—not strai
 - General, cardiac, pediatric, and maternity metadata filtering.
 - Automatic distance-estimate fallback if public routing is unavailable.
 - Simulated availability changes for demonstrating automatic reranking.
-- Local-only analytics dashboard and CSV export; precise coordinates are not stored.
-- Typed dispatch-agent commands with visible intent, context, action, and validation traces.
-- On-device AI explanation with an immediate verified deterministic fallback.
+- Local-only analytics dashboard and CSV export; decision history excludes precise coordinates.
+- In-app page memory preserves searches, filters, routes, onboarding progress, Scenario Lab settings, and generated decision briefs while navigating. Every destination opens at the top.
+- A closest-versus-fastest evidence layer that proves when road ETA changes the recommendation.
+- A clearly labelled Scenario Lab that reruns the real ranking pipeline after a simulated availability change.
+- On-device AI Decision Brief with validation and an immediate deterministic fallback.
 
 ## Optional free-tier upgrades
 
@@ -35,11 +37,14 @@ Do not enable billing when the goal is a strict $0 ceiling. Free quotas can run 
 4. If configured, compare the fastest five again using live traffic.
 5. Rank `accepting`, then `limited`, then `unknown`, and place `diverting` facilities last; sort each group by ETA.
 6. Highlight the best option, disclose its source, and render the road path.
-7. Store only a small, local decision summary for the dashboard and agent explanation.
+7. Compare the selected hospital with the closest route and fastest ETA so the recommendation is auditable.
+8. Store only a small, location-free decision summary for the dashboard and optional AI explanation.
 
-The open FLAN-T5 Small model is downloaded on demand and runs inside a browser worker. It receives only the non-location decision summary, cannot change the selected hospital, and is rejected if it omits core facts or adds unsupported medical claims. The first model download is about 100 MB; the browser can reuse its cache. If loading or validation fails, QuickER displays the deterministic explanation.
+Interactive page state—including precise GPS coordinates needed to restore a search—stays only in volatile JavaScript memory for the current browser tab. It is never written to `localStorage` or decision history and disappears on reload or tab close. Preferences and non-location decision summaries can remain in browser storage until the user clears them.
 
-The Agent page accepts plain-language routing commands. A deterministic intent router immediately prepares specialty searches, map views, source explanations, availability disclosures, and privacy answers. Eligible decision questions can then be refined by the local model. The visible activity trace shows observable tools and validation steps, not hidden chain-of-thought.
+The open FLAN-T5 Small model is downloaded on demand and runs inside a browser worker. After the routing engine has made its choice, the **Decision Brief** receives only a non-location summary of that result. It cannot change the selected hospital. QuickER rejects a generated brief if it drops core facts or adds unsupported medical claims, then displays the verified deterministic explanation instead. The first model download is about 100 MB and can be reused from the browser cache.
+
+The **Scenario Lab** demonstrates a realistic operational handoff without faking live capacity. It marks the current recommendation as diverting in a clearly labelled local demo feed, reruns the same specialty, availability, and ETA pipeline, and shows the before/event/after decision plus its travel-time trade-off. Its accessibility view distinguishes explicit public tags from missing or unknown data.
 
 ## Run locally
 
@@ -73,10 +78,10 @@ The static deployment needs no account beyond the existing GitHub repository, no
 
 1. Open **Find Hospital**, choose **Use Beirut demo point**, and show that hospitals are ranked by road ETA.
 2. Open the fastest route and point to the ETA source badge.
-3. Open **Dashboard**, select **Run rerouting demo**, and show the diverting hospital move below an accepting alternative.
-4. Open **Emergency Options**, change the specialty filter, and show the 5/10/15-minute accessibility layer.
-5. Open **Agent**, type **Why was this hospital recommended?**, show the immediate verified answer and activity trace, then show the account-free on-device AI badge. Warm the model cache before recording.
-6. End on **About** to explain the $0 architecture and its honest limitations.
+3. Point to **Closest route**, **Fastest ETA**, and **Fastest suitable** to prove why the result was selected.
+4. Select **Generate AI Decision Brief** and keep the validated **On-device AI** badge visible. Warm the model cache before recording.
+5. Open **Scenario**, run the availability rerouting scenario, and show the before/event/after result plus access evidence.
+6. Open **Dashboard** to show local decision evidence and metadata coverage, then finish on **About** for the $0 architecture and honest limitations.
 
 ## Technology
 

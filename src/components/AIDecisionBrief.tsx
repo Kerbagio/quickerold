@@ -6,6 +6,7 @@ import { Progress } from "@/components/ui/progress";
 import { usePageMemory } from "@/hooks/usePageMemory";
 import type { DecisionRecord } from "@/services/analytics";
 import {
+  deterministicDecisionBrief,
   generateDecisionBrief,
   type DecisionBrief,
 } from "@/services/decisionAI";
@@ -44,34 +45,49 @@ const AIDecisionBrief = ({
   const loading = isCurrent && memory.loading;
 
   const createBrief = async () => {
+    const verifiedBrief = deterministicDecisionBrief(decision);
     setMemory({
       decisionKey,
-      brief: null,
+      brief: verifiedBrief,
       loading: true,
-      progressLabel: "Preparing verified routing facts…",
+      progressLabel: "Verified brief ready • loading optional local AI…",
     });
-    const result = await generateDecisionBrief(decision, (progress) => {
+    try {
+      const result = await generateDecisionBrief(decision, (progress) => {
+        setMemory((current) =>
+          current.decisionKey === decisionKey
+            ? {
+                ...current,
+                progressLabel: progress.label,
+                progressPercent: progress.percent,
+              }
+            : current,
+        );
+      });
       setMemory((current) =>
         current.decisionKey === decisionKey
           ? {
               ...current,
-              progressLabel: progress.label,
-              progressPercent: progress.percent,
+              brief: result,
+              loading: false,
+              progressLabel: "",
+              progressPercent: undefined,
             }
           : current,
       );
-    });
-    setMemory((current) =>
-      current.decisionKey === decisionKey
-        ? {
-            ...current,
-            brief: result,
-            loading: false,
-            progressLabel: "",
-            progressPercent: undefined,
-          }
-        : current,
-    );
+    } catch {
+      setMemory((current) =>
+        current.decisionKey === decisionKey
+          ? {
+              ...current,
+              brief: verifiedBrief,
+              loading: false,
+              progressLabel: "",
+              progressPercent: undefined,
+            }
+          : current,
+      );
+    }
   };
 
   return (
@@ -94,22 +110,29 @@ const AIDecisionBrief = ({
         </div>
 
         <div className="flex min-h-64 flex-col justify-center p-5 sm:p-6">
-          {loading ? (
-            <div role="status" aria-live="polite">
-              <div className="flex items-center gap-3">
-                <LoaderCircle className="h-5 w-5 animate-spin text-accent" />
-                <p className="font-semibold">{memory.progressLabel}</p>
-              </div>
-              <Progress
-                className="mt-4 h-2"
-                value={memory.progressPercent ?? 12}
-              />
-              <p className="mt-3 text-xs text-muted-foreground">
-                The first model download can take longer; later runs can use the browser cache.
-              </p>
-            </div>
-          ) : brief ? (
+          {brief ? (
             <div>
+              {loading ? (
+                <div
+                  className="mb-5 rounded-xl border border-accent/25 bg-accent/5 p-4"
+                  role="status"
+                  aria-live="polite"
+                >
+                  <div className="flex items-center gap-3">
+                    <LoaderCircle className="h-5 w-5 animate-spin text-accent" />
+                    <p className="text-sm font-semibold">
+                      {memory.progressLabel}
+                    </p>
+                  </div>
+                  <Progress
+                    className="mt-3 h-2"
+                    value={memory.progressPercent ?? 12}
+                  />
+                  <p className="mt-2 text-xs text-muted-foreground">
+                    The verified brief below is ready now. The first optional model download depends on connection speed and later runs can use the browser cache.
+                  </p>
+                </div>
+              ) : null}
               <div className="mb-4 flex flex-wrap items-center gap-2">
                 <Badge
                   className={
@@ -122,7 +145,9 @@ const AIDecisionBrief = ({
                   <CheckCircle2 className="mr-1.5 h-3.5 w-3.5" />
                   {brief.mode === "local-ai"
                     ? "On-device AI • validated"
-                    : "Verified rules fallback"}
+                    : loading
+                      ? "Verified brief • AI enhancing"
+                      : "Verified rules fallback"}
                 </Badge>
                 {brief.model ? (
                   <span className="text-xs text-muted-foreground">
@@ -133,7 +158,7 @@ const AIDecisionBrief = ({
               <p className="text-base leading-relaxed text-foreground">
                 {brief.text}
               </p>
-              {brief.mode === "deterministic" ? (
+              {brief.mode === "deterministic" && !loading ? (
                 <p className="mt-3 text-xs text-muted-foreground">
                   The local model was unavailable or its output failed validation, so this result is not presented as AI-generated.
                 </p>
@@ -142,9 +167,15 @@ const AIDecisionBrief = ({
                 className="mt-5"
                 size="sm"
                 variant="outline"
+                disabled={loading}
                 onClick={() => void createBrief()}
               >
-                <RotateCcw className="mr-2 h-4 w-4" /> Regenerate brief
+                {loading ? (
+                  <LoaderCircle className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <RotateCcw className="mr-2 h-4 w-4" />
+                )}
+                {loading ? "Enhancing locally…" : "Regenerate brief"}
               </Button>
             </div>
           ) : (

@@ -31,7 +31,11 @@ import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import Layout from "@/components/Layout";
 import LoadingState from "@/components/LoadingState";
-import { useHospitals } from "@/hooks/useHospitals";
+import {
+  useHospitals,
+  type Hospital,
+  type RoutingStatus,
+} from "@/hooks/useHospitals";
 import { usePageMemory } from "@/hooks/usePageMemory";
 import { useLanguage } from "@/contexts/LanguageContext";
 import {
@@ -39,6 +43,7 @@ import {
   type AvailabilityStatus,
 } from "@/services/availability";
 import {
+  DECISION_HISTORY_UPDATED_EVENT,
   getDecisionHistory,
   type DecisionRecord,
 } from "@/services/analytics";
@@ -69,8 +74,13 @@ function downloadCsv(rows: Array<Record<string, CsvValue>>, filename: string) {
   const anchor = document.createElement("a");
   anchor.href = url;
   anchor.download = filename;
+  anchor.style.display = "none";
+  document.body.appendChild(anchor);
   anchor.click();
-  URL.revokeObjectURL(url);
+  globalThis.setTimeout(() => {
+    anchor.remove();
+    URL.revokeObjectURL(url);
+  }, 1_000);
 }
 
 function comparisonLabel(record: DecisionRecord): string {
@@ -91,20 +101,39 @@ function comparisonLabel(record: DecisionRecord): string {
 const Dashboard = () => {
   const { language } = useLanguage();
   const {
-    hospitals,
+    hospitals: dashboardHospitals,
     loading,
     fetchHospitals,
-    routingStatus,
-    searchCriteria,
+    routingStatus: dashboardRoutingStatus,
+    searchCriteria: dashboardSearchCriteria,
   } = useHospitals("dashboard");
+  const [homeHospitals] = usePageMemory<Hospital[]>("home.hospitals", []);
+  const [homeRoutingStatus] = usePageMemory<RoutingStatus>(
+    "home.routingStatus",
+    { source: null, notice: "", generatedAt: null },
+  );
+  const [homeLocation] = usePageMemory<{
+    lat: number;
+    lng: number;
+  } | null>("home.location", null);
   const [userLocation, setUserLocation] = usePageMemory<{
     lat: number;
     lng: number;
-  } | null>("dashboard.location", null);
+  } | null>("dashboard.location", () => homeLocation);
   const [history, setHistory] = usePageMemory<DecisionRecord[]>(
     "dashboard.history",
     () => getDecisionHistory(),
   );
+  const hospitals = dashboardHospitals.length
+    ? dashboardHospitals
+    : homeHospitals;
+  const routingStatus = dashboardHospitals.length
+    ? dashboardRoutingStatus
+    : homeRoutingStatus;
+
+  useEffect(() => {
+    if (!userLocation && homeLocation) setUserLocation(homeLocation);
+  }, [homeLocation, setUserLocation, userLocation]);
 
   useEffect(() => {
     if (userLocation || !navigator.geolocation) return;
@@ -120,28 +149,52 @@ const Dashboard = () => {
   }, [setUserLocation, userLocation]);
 
   useEffect(() => {
-    if (!userLocation || hospitals.length || loading || searchCriteria) return;
+    if (
+      !userLocation ||
+      dashboardHospitals.length ||
+      homeHospitals.length ||
+      loading ||
+      dashboardSearchCriteria
+    ) {
+      return;
+    }
     void fetchHospitals(userLocation.lat, userLocation.lng, {
       radius: 15,
       emergencyType: "general",
+      recordDecision: false,
     });
   }, [
+    dashboardHospitals.length,
+    dashboardSearchCriteria,
     fetchHospitals,
-    hospitals.length,
+    homeHospitals.length,
     loading,
-    searchCriteria,
     userLocation,
   ]);
 
   useEffect(() => {
-    setHistory(getDecisionHistory());
-  }, [hospitals, setHistory]);
+    const refreshHistory = () => setHistory(getDecisionHistory());
+    refreshHistory();
+    window.addEventListener(
+      DECISION_HISTORY_UPDATED_EVENT,
+      refreshHistory,
+    );
+    window.addEventListener("storage", refreshHistory);
+    return () => {
+      window.removeEventListener(
+        DECISION_HISTORY_UPDATED_EVENT,
+        refreshHistory,
+      );
+      window.removeEventListener("storage", refreshHistory);
+    };
+  }, [setHistory]);
 
   const reloadHospitals = () => {
     if (!userLocation) return;
     void fetchHospitals(userLocation.lat, userLocation.lng, {
       radius: 15,
       emergencyType: "general",
+      recordDecision: false,
     });
   };
 

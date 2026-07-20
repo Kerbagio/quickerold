@@ -1,4 +1,4 @@
-import { useCallback } from "react";
+import { useCallback, useRef } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { usePageMemory } from "@/hooks/usePageMemory";
 import { normalizeEmergencyType } from "@/services/emergency";
@@ -36,6 +36,7 @@ interface UseHospitalsReturn {
 }
 
 export const useHospitals = (memoryKey = "shared"): UseHospitalsReturn => {
+  const requestSequence = useRef(0);
   const [hospitals, setHospitals] = usePageMemory<Hospital[]>(
     `${memoryKey}.hospitals`,
     [],
@@ -68,6 +69,7 @@ export const useHospitals = (memoryKey = "shared"): UseHospitalsReturn => {
       lng: number,
       options: HospitalSearchOptions = {},
     ) => {
+      const requestId = ++requestSequence.current;
       setLoading(true);
       setError(null);
       setSpecialtyFallback(false);
@@ -81,6 +83,7 @@ export const useHospitals = (memoryKey = "shared"): UseHospitalsReturn => {
 
       try {
         const result = await searchHospitals(lat, lng, options);
+        if (requestId !== requestSequence.current) return;
         setHospitals(result.hospitals);
         setSpecialtyFallback(result.specialtyFallback);
         setRoutingStatus(result.routingStatus);
@@ -97,6 +100,7 @@ export const useHospitals = (memoryKey = "shared"): UseHospitalsReturn => {
             : result.routingStatus.notice,
         });
       } catch (caughtError) {
+        if (requestId !== requestSequence.current) return;
         const message = hospitalSearchErrorMessage(caughtError);
         setError(message);
         setHospitals([]);
@@ -106,7 +110,7 @@ export const useHospitals = (memoryKey = "shared"): UseHospitalsReturn => {
           variant: "destructive",
         });
       } finally {
-        setLoading(false);
+        if (requestId === requestSequence.current) setLoading(false);
       }
     },
     [

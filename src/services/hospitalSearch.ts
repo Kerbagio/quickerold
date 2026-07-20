@@ -42,6 +42,7 @@ export interface Hospital {
 export interface HospitalSearchOptions {
   radius?: number;
   emergencyType?: string;
+  recordDecision?: boolean;
 }
 
 export interface RoutingStatus {
@@ -218,23 +219,25 @@ export async function searchHospitals(
   if (!bestOption) throw new HospitalSearchError("no-routes");
   const evidence = buildDecisionEvidence(hospitals);
 
-  recordDecision({
-    timestamp: new Date().toISOString(),
-    emergencyType,
-    candidateCount: hospitals.length,
-    recommendedHospital: bestOption.name,
-    etaMinutes: bestOption.etaMinutes,
-    etaSource: bestOption.etaSource,
-    availability: bestOption.availability.status,
-    nearestHospital: evidence?.nearestByDistance.name,
-    nearestEtaMinutes: evidence?.nearestByDistance.etaMinutes,
-    nearestDistanceKm: evidence?.nearestByDistance.distanceKm,
-    fastestHospital: evidence?.fastestByEta.name,
-    fastestEtaMinutes: evidence?.fastestByEta.etaMinutes,
-    recommendedDistanceKm: bestOption.distanceKm,
-    timeDeltaVsNearest: evidence?.timeDeltaVsNearest,
-    selectionReason: evidence?.reason,
-  });
+  if (options.recordDecision !== false) {
+    recordDecision({
+      timestamp: new Date().toISOString(),
+      emergencyType,
+      candidateCount: hospitals.length,
+      recommendedHospital: bestOption.name,
+      etaMinutes: bestOption.etaMinutes,
+      etaSource: bestOption.etaSource,
+      availability: bestOption.availability.status,
+      nearestHospital: evidence?.nearestByDistance.name,
+      nearestEtaMinutes: evidence?.nearestByDistance.etaMinutes,
+      nearestDistanceKm: evidence?.nearestByDistance.distanceKm,
+      fastestHospital: evidence?.fastestByEta.name,
+      fastestEtaMinutes: evidence?.fastestByEta.etaMinutes,
+      recommendedDistanceKm: bestOption.distanceKm,
+      timeDeltaVsNearest: evidence?.timeDeltaVsNearest,
+      selectionReason: evidence?.reason,
+    });
+  }
 
   return {
     origin,

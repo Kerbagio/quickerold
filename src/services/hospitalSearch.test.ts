@@ -121,6 +121,38 @@ describe("searchHospitals", () => {
     expect(result.bestOption.specialtyMatch).toBe("unknown");
   });
 
+  it("can build a dashboard or scenario snapshot without inflating decision history", async () => {
+    mocks.fetchHospitalsFromOSM.mockResolvedValue([
+      {
+        id: "hospital-a",
+        name: "Hospital A",
+        lat: 33.9,
+        lng: 35.5,
+        tags: { emergency: "yes" },
+      },
+    ]);
+    mocks.calculateHospitalEtas.mockResolvedValue({
+      estimates: [
+        {
+          hospitalId: "hospital-a",
+          durationMinutes: 6,
+          distanceKm: 2,
+          source: "road-network",
+        },
+      ],
+      source: "road-network",
+      notice: "Road ETAs",
+      generatedAt: "2026-07-20T00:00:00.000Z",
+    });
+
+    await searchHospitals(33.89, 35.5, {
+      emergencyType: "general",
+      recordDecision: false,
+    });
+
+    expect(mocks.recordDecision).not.toHaveBeenCalled();
+  });
+
   it("returns a typed error when discovery finds no hospitals", async () => {
     mocks.fetchHospitalsFromOSM.mockResolvedValue([]);
 

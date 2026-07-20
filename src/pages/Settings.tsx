@@ -104,8 +104,10 @@ const Settings = () => {
     a.download = `quicker-data-${new Date().toISOString().split('T')[0]}.json`;
     document.body.appendChild(a);
     a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+    globalThis.setTimeout(() => {
+      a.remove();
+      URL.revokeObjectURL(url);
+    }, 1_000);
     
     toast({
       title: t('toast.dataExported'),

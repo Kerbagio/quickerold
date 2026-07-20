@@ -48,6 +48,7 @@ interface MapProps {
   showIsochrones?: boolean;
   hospitals?: HospitalMapItem[];
   userLocation?: Coordinate | null;
+  searchRadiusKm?: number;
   onLocationSelect?: (lat: number, lng: number) => void;
   onIsochroneSourceChange?: (source: IsochroneSource) => void;
 }
@@ -137,6 +138,7 @@ const Map = forwardRef<MapRef, MapProps>(
       showIsochrones = false,
       hospitals = [],
       userLocation,
+      searchRadiusKm,
       onLocationSelect,
       onIsochroneSourceChange,
     },
@@ -150,6 +152,7 @@ const Map = forwardRef<MapRef, MapProps>(
     const hospitalLayerRef = useRef<L.LayerGroup | null>(null);
     const routeLayerRef = useRef<L.LayerGroup | null>(null);
     const isochroneLayerRef = useRef<L.LayerGroup | null>(null);
+    const searchRadiusLayerRef = useRef<L.LayerGroup | null>(null);
     const tileLayerRef = useRef<L.TileLayer | null>(null);
     const onLocationSelectRef = useRef(onLocationSelect);
     const onIsochroneSourceChangeRef = useRef(onIsochroneSourceChange);
@@ -310,6 +313,7 @@ const Map = forwardRef<MapRef, MapProps>(
       hospitalLayerRef.current = L.layerGroup().addTo(map);
       routeLayerRef.current = L.layerGroup().addTo(map);
       isochroneLayerRef.current = L.layerGroup().addTo(map);
+      searchRadiusLayerRef.current = L.layerGroup().addTo(map);
       setMapReady(true);
 
       return () => {
@@ -336,6 +340,28 @@ const Map = forwardRef<MapRef, MapProps>(
       showUserLocation,
       userLocation,
     ]);
+
+    useEffect(() => {
+      const layer = searchRadiusLayerRef.current;
+      if (!mapReady || !layer) return;
+      layer.clearLayers();
+      if (!userLocation || !searchRadiusKm) return;
+
+      const boundary = L.circle([userLocation.lat, userLocation.lng], {
+        color: "#2563eb",
+        fill: false,
+        opacity: 0.9,
+        weight: 2,
+        dashArray: "7 7",
+        radius: searchRadiusKm * 1000,
+      })
+        .bindTooltip(`${searchRadiusKm} km hospital search boundary`)
+        .addTo(layer);
+      mapRef.current?.fitBounds(boundary.getBounds(), {
+        padding: [24, 24],
+        maxZoom: 14,
+      });
+    }, [mapReady, searchRadiusKm, userLocation]);
 
     useEffect(() => {
       const layer = hospitalLayerRef.current;

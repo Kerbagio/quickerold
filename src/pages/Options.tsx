@@ -131,8 +131,10 @@ const Options = () => {
   const bestOption = hospitals[0] ?? null;
   const activeEmergencyType =
     searchCriteria?.emergencyType ?? selectedType;
+  const activeRadius = searchCriteria?.radiusKm ?? radius[0];
   const analysisNeedsUpdate =
-    Boolean(searchCriteria) && selectedType !== activeEmergencyType;
+    Boolean(searchCriteria) &&
+    (selectedType !== activeEmergencyType || radius[0] !== activeRadius);
   const visibleHospitals = hospitals.filter((hospital) =>
     matchesEvidenceFilter(hospital, evidenceFilter),
   );
@@ -179,6 +181,7 @@ const Options = () => {
     void fetchHospitals(userLocation.lat, userLocation.lng, {
       radius: radius[0],
       emergencyType: requestedEmergencyType,
+      recordDecision: false,
     });
   }, [
     fetchHospitals,
@@ -204,8 +207,9 @@ const Options = () => {
     void fetchHospitals(userLocation.lat, userLocation.lng, {
       radius: radius[0],
       emergencyType: selectedType,
+      recordDecision: false,
     });
-    // A new location runs once. Filter and radius changes use Update analysis.
+    // A new location runs once. Later map clicks and control changes use handlers.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     userLocation,
@@ -221,7 +225,42 @@ const Options = () => {
     setScenario(null);
     await fetchHospitals(userLocation.lat, userLocation.lng, {
       radius: radius[0],
-      emergencyType: activeEmergencyType,
+      emergencyType: selectedType,
+      recordDecision: false,
+    });
+  };
+
+  const selectFacilityType = (type: EmergencyType) => {
+    setSelectedType(type);
+    setScenario(null);
+    clearDemoAvailability();
+    if (!userLocation) return;
+    void fetchHospitals(userLocation.lat, userLocation.lng, {
+      radius: radius[0],
+      emergencyType: type,
+      recordDecision: false,
+    });
+  };
+
+  const applyRadius = (nextRadius: number[]) => {
+    if (!userLocation || nextRadius[0] == null) return;
+    setScenario(null);
+    clearDemoAvailability();
+    void fetchHospitals(userLocation.lat, userLocation.lng, {
+      radius: nextRadius[0],
+      emergencyType: selectedType,
+      recordDecision: false,
+    });
+  };
+
+  const selectMapLocation = (lat: number, lng: number) => {
+    setUserLocation({ lat, lng });
+    setScenario(null);
+    clearDemoAvailability();
+    void fetchHospitals(lat, lng, {
+      radius: radius[0],
+      emergencyType: selectedType,
+      recordDecision: false,
     });
   };
 
@@ -256,6 +295,7 @@ const Options = () => {
     await fetchHospitals(userLocation.lat, userLocation.lng, {
       radius: radius[0],
       emergencyType: selectedType,
+      recordDecision: false,
     });
     setScenario((current) =>
       current ? { ...current, phase: "complete" } : current,
@@ -273,7 +313,8 @@ const Options = () => {
     if (userLocation) {
       await fetchHospitals(userLocation.lat, userLocation.lng, {
         radius: radius[0],
-        emergencyType: activeEmergencyType,
+        emergencyType: selectedType,
+        recordDecision: false,
       });
     }
   };
@@ -308,7 +349,8 @@ const Options = () => {
                   key={type.id}
                   type="button"
                   variant={selectedType === type.id ? "default" : "outline"}
-                  onClick={() => setSelectedType(type.id)}
+                  onClick={() => selectFacilityType(type.id)}
+                  disabled={loading && selectedType === type.id}
                 >
                   {type.label}
                 </Button>
@@ -317,7 +359,7 @@ const Options = () => {
             {analysisNeedsUpdate ? (
               <div className="mt-4 flex items-center gap-2 rounded-xl border border-warning/30 bg-warning/5 p-3 text-sm text-warning">
                 <AlertTriangle className="h-4 w-4 shrink-0" />
-                Select Update analysis to apply this capability filter.
+                The selected capability or radius is still updating. You can also select Update analysis to retry.
               </div>
             ) : null}
             <p className="mt-4 text-sm text-muted-foreground">
@@ -333,6 +375,7 @@ const Options = () => {
             <Slider
               value={radius}
               onValueChange={setRadius}
+              onValueCommit={applyRadius}
               max={20}
               min={2}
               step={1}
@@ -341,6 +384,9 @@ const Options = () => {
               <span>2 km</span>
               <span>20 km</span>
             </div>
+            <p className="mt-3 text-xs text-muted-foreground">
+              Recalculates automatically when you finish moving the slider.
+            </p>
             <Button
               className="mt-5 w-full"
               onClick={() => void updateResults()}
@@ -558,9 +604,21 @@ const Options = () => {
 
           <div className="mb-4 flex flex-wrap gap-4 text-xs text-muted-foreground">
             <span>{visibleHospitals.length} visible candidates</span>
+            <span>{radius[0]} km selected search radius</span>
             <span>{accessEvidence.alwaysOpenTagged} explicitly tagged 24/7</span>
             <span>{accessEvidence.wheelchairTagged} with positive wheelchair tags</span>
           </div>
+
+          <div className="mb-4 rounded-xl border border-primary/20 bg-primary/5 p-3 text-sm text-muted-foreground">
+            Click anywhere on the map to move the start point. QuickER will automatically search again and show hospitals inside the selected {radius[0]} km radius.
+          </div>
+
+          {loading && hospitals.length ? (
+            <div className="mb-4 flex items-center gap-2 rounded-xl border bg-muted/40 p-3 text-sm font-medium">
+              <LoaderCircle className="h-4 w-4 animate-spin text-primary" />
+              Updating hospital markers and ETAs for the new selection…
+            </div>
+          ) : null}
 
           <div className="mb-4 flex gap-2 rounded-xl bg-muted/50 p-3 text-sm text-muted-foreground">
             <AlertTriangle className="h-4 w-4 shrink-0" />
@@ -582,7 +640,8 @@ const Options = () => {
               className="h-80 lg:h-[28rem]"
               hospitals={visibleHospitals}
               userLocation={userLocation}
-              onLocationSelect={(lat, lng) => setUserLocation({ lat, lng })}
+              searchRadiusKm={radius[0]}
+              onLocationSelect={selectMapLocation}
               onIsochroneSourceChange={setIsochroneSource}
               showIsochrones
             />

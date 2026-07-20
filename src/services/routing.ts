@@ -47,6 +47,22 @@ const OSRM_TABLE_URL = "https://router.project-osrm.org/table/v1/driving";
 const ROAD_CANDIDATE_LIMIT = 12;
 const LIVE_TRAFFIC_CANDIDATE_LIMIT = 5;
 const DISPLAY_CANDIDATE_LIMIT = 8;
+const ROAD_REQUEST_TIMEOUT_MS = 7_000;
+const TRAFFIC_REQUEST_TIMEOUT_MS = 5_000;
+
+async function fetchWithTimeout(
+  input: RequestInfo | URL,
+  init: RequestInit | undefined,
+  timeoutMs: number,
+): Promise<Response> {
+  const controller = new AbortController();
+  const timeout = globalThis.setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetch(input, { ...init, signal: controller.signal });
+  } finally {
+    globalThis.clearTimeout(timeout);
+  }
+}
 
 export function haversineKm(a: Coordinate, b: Coordinate): number {
   const radiusKm = 6371;
@@ -89,7 +105,11 @@ async function fetchRoadNetworkEstimates(
     .map((_, index) => String(index + 1))
     .join(";");
   const url = `${OSRM_TABLE_URL}/${coordinates}?sources=0&destinations=${destinationIndexes}&annotations=duration,distance`;
-  const response = await fetch(url);
+  const response = await fetchWithTimeout(
+    url,
+    undefined,
+    ROAD_REQUEST_TIMEOUT_MS,
+  );
 
   if (!response.ok) {
     throw new Error(`OSRM table request failed with ${response.status}`);
@@ -122,11 +142,15 @@ async function fetchLiveTrafficEstimates(
   origin: Coordinate,
   candidates: RoutingCandidate[],
 ): Promise<RouteEstimate[]> {
-  const response = await fetch("/api/traffic", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ origin, candidates }),
-  });
+  const response = await fetchWithTimeout(
+    "/api/traffic",
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ origin, candidates }),
+    },
+    TRAFFIC_REQUEST_TIMEOUT_MS,
+  );
 
   if (!response.ok) {
     throw new Error(`TomTom traffic request failed with ${response.status}`);

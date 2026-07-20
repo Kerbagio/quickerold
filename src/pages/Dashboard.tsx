@@ -1,597 +1,384 @@
-import { useState, useEffect, useRef } from "react";
-import { Card } from "@/components/ui/card";
+import { useEffect, useMemo, useState } from "react";
+import {
+  Activity,
+  BarChart3,
+  Clock,
+  Database,
+  Download,
+  MapPin,
+  RefreshCw,
+  RotateCcw,
+  Siren,
+} from "lucide-react";
+import {
+  Bar,
+  BarChart,
+  CartesianGrid,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { BarChart3, Clock, MapPin, TrendingUp, Download, FileText, Users, Activity } from "lucide-react";
+import { Card } from "@/components/ui/card";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import Layout from "@/components/Layout";
-import Map, { MapRef } from "@/components/Map";
-import { useLanguage } from "@/contexts/LanguageContext";
-import { useHospitals, Hospital } from "@/hooks/useHospitals";
+import { useHospitals } from "@/hooks/useHospitals";
 import { useToast } from "@/hooks/use-toast";
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell } from 'recharts';
+import { useLanguage } from "@/contexts/LanguageContext";
+import {
+  availabilityLabel,
+  clearDemoAvailability,
+  setDemoAvailability,
+  type AvailabilityStatus,
+} from "@/services/availability";
+import {
+  getDecisionHistory,
+  type DecisionRecord,
+} from "@/services/analytics";
+
+type CsvValue = string | number;
+
+const statusStyles: Record<AvailabilityStatus, string> = {
+  accepting: "border-success text-success",
+  limited: "border-warning text-warning",
+  diverting: "border-destructive text-destructive",
+  unknown: "text-muted-foreground",
+};
+
+function downloadCsv(rows: Array<Record<string, CsvValue>>, filename: string) {
+  if (!rows.length) return;
+  const headers = Object.keys(rows[0]);
+  const escape = (value: CsvValue) =>
+    `"${String(value).split('"').join('""')}"`;
+  const content = [
+    headers.map(escape).join(","),
+    ...rows.map((row) => headers.map((header) => escape(row[header] ?? "")).join(",")),
+  ].join("\n");
+  const url = URL.createObjectURL(
+    new Blob([content], { type: "text/csv;charset=utf-8" }),
+  );
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = filename;
+  anchor.click();
+  URL.revokeObjectURL(url);
+}
 
 const Dashboard = () => {
-  const { t, language } = useLanguage();
+  const { language } = useLanguage();
   const { toast } = useToast();
-  const { hospitals, loading, error, fetchHospitals } = useHospitals();
-  const [userLocation, setUserLocation] = useState<{lat: number; lng: number} | null>(null);
-  const [userAnalytics, setUserAnalytics] = useState<any>(null);
-  const mapRef = useRef<MapRef>(null);
+  const { hospitals, loading, fetchHospitals, routingStatus } = useHospitals();
+  const [userLocation, setUserLocation] = useState<{
+    lat: number;
+    lng: number;
+  } | null>(null);
+  const [history, setHistory] = useState<DecisionRecord[]>(() =>
+    getDecisionHistory(),
+  );
 
-  // Get user's location for dashboard
   useEffect(() => {
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          const { latitude, longitude } = position.coords;
-          setUserLocation({ lat: latitude, lng: longitude });
-          // Fetch hospitals for the dashboard map
-          fetchHospitals(latitude, longitude, { radius: 15, emergencyType: 'general' });
-        },
-        (error) => {
-          console.error('Location error:', error);
-        }
-      );
-    }
-  }, [fetchHospitals]);
-
-  // Load user analytics from localStorage
-  useEffect(() => {
-    const savedAnalytics = localStorage.getItem('userAnalytics');
-    if (savedAnalytics) {
-      setUserAnalytics(JSON.parse(savedAnalytics));
-    }
+    if (!navigator.geolocation) return;
+    navigator.geolocation.getCurrentPosition(
+      (position) =>
+        setUserLocation({
+          lat: position.coords.latitude,
+          lng: position.coords.longitude,
+        }),
+      () => undefined,
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 30000 },
+    );
   }, []);
 
-  // Calculate user-specific KPIs
-  const calculateKPIs = () => {
-    if (!hospitals.length) return {
-      citywideAverage: "Loading...",
-      peakHour: "Loading...",
-      bestHour: "Loading...",
-      totalHospitals: 0,
-      avgDistance: "0 km"
-    };
+  useEffect(() => {
+    if (!userLocation) return;
+    void fetchHospitals(userLocation.lat, userLocation.lng, {
+      radius: 15,
+      emergencyType: "general",
+    });
+  }, [fetchHospitals, userLocation]);
 
-    const avgEta = Math.round(
-      hospitals.reduce((sum, h) => {
-        const eta = parseInt(h.eta?.replace(' min', '') || '0');
-        return sum + eta;
-      }, 0) / hospitals.length
-    );
+  useEffect(() => {
+    setHistory(getDecisionHistory());
+  }, [hospitals]);
 
-    const avgDistance = (
-      hospitals.reduce((sum, h) => {
-        const dist = parseFloat(h.distance?.replace(' km', '') || '0');
-        return sum + dist;
-      }, 0) / hospitals.length
-    ).toFixed(1);
-
-    return {
-      citywideAverage: `${avgEta} ${t('dashboard.minutes')}`,
-      peakHour: "5:00 PM", // This could be calculated from user's search history
-      bestHour: "3:00 AM",
-      totalHospitals: hospitals.length,
-      avgDistance: `${avgDistance} km`
-    };
-  };
-
-  const kpiData = calculateKPIs();
-
-  // Generate user-specific areas based on actual hospital data
-  const generateUserAreas = () => {
-    if (!hospitals.length) return [];
-    
-    return hospitals.slice(0, 5).map((hospital, index) => {
-      const eta = parseInt(hospital.eta?.replace(' min', '') || '0');
-      const change = Math.random() > 0.5 ? '+' : '-';
-      const changeValue = Math.floor(Math.random() * 3) + 1;
-      
-      return {
-        area: hospital.name,
-        avgEta: `${eta} ${t('dashboard.minutes')}`,
-        change: `${change}${changeValue} ${t('dashboard.minutes')}`,
-        distance: hospital.distance || '0 km',
-        specialty: hospital.specialty || 'General'
-      };
+  const reloadHospitals = () => {
+    if (!userLocation) return;
+    void fetchHospitals(userLocation.lat, userLocation.lng, {
+      radius: 15,
+      emergencyType: "general",
     });
   };
 
-  const userAreas = generateUserAreas();
+  const updateStatus = (hospitalId: string, status: AvailabilityStatus) => {
+    setDemoAvailability(hospitalId, status);
+    reloadHospitals();
+  };
 
-  // CSV Export functionality
-  const exportToCSV = (data: any[], filename: string) => {
-    if (!data.length) {
+  const runDemoScenario = () => {
+    const fastestByEta = [...hospitals].sort(
+      (first, second) => first.etaMinutes - second.etaMinutes,
+    );
+    if (fastestByEta.length < 2) {
       toast({
-        title: "No data to export",
-        description: "Please ensure hospitals are loaded first.",
-        variant: "destructive"
+        title: "Load at least two hospitals first",
+        description: "Share a location or use the Beirut demo point.",
+        variant: "destructive",
       });
       return;
     }
 
-    const headers = Object.keys(data[0]);
-    const csvContent = [
-      headers.join(','),
-      ...data.map(row => headers.map(header => `"${row[header] || ''}"`).join(','))
-    ].join('\n');
-
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    const url = URL.createObjectURL(blob);
-    link.setAttribute('href', url);
-    link.setAttribute('download', filename);
-    link.style.visibility = 'hidden';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-
-    toast({
-      title: "Data exported",
-      description: `${filename} has been downloaded successfully.`,
-    });
-  };
-
-  const exportHospitalData = () => {
-    const hospitalData = hospitals.map(h => ({
-      Name: h.name,
-      Distance: h.distance,
-      ETA: h.eta,
-      Specialty: h.specialty,
-      Latitude: h.lat,
-      Longitude: h.lng
-    }));
-    exportToCSV(hospitalData, `hospitals_${new Date().toISOString().split('T')[0]}.csv`);
-  };
-
-  const exportAnalyticsData = () => {
-    const analyticsData = [
-      {
-        Metric: 'Total Hospitals Found',
-        Value: hospitals.length,
-        Timestamp: new Date().toISOString()
-      },
-      {
-        Metric: 'Average ETA',
-        Value: kpiData.citywideAverage,
-        Timestamp: new Date().toISOString()
-      },
-      {
-        Metric: 'Average Distance',
-        Value: kpiData.avgDistance,
-        Timestamp: new Date().toISOString()
-      }
-    ];
-    exportToCSV(analyticsData, `analytics_${new Date().toISOString().split('T')[0]}.csv`);
-  };
-
-  // Generate real chart data based on hospital data
-  const generateChartData = () => {
-    if (!hospitals.length) return [];
-    
-    const hours = Array.from({ length: 24 }, (_, i) => i);
-    return hours.map(hour => {
-      // Simulate realistic ETA patterns based on time of day
-      const baseEta = hospitals.length > 0 ? 
-        Math.round(hospitals.reduce((sum, h) => {
-          const eta = parseInt(h.eta?.replace(' min', '') || '0');
-          return sum + eta;
-        }, 0) / hospitals.length) : 12;
-      
-      // Peak hours (7-9 AM, 5-7 PM) have higher ETAs
-      const isPeakHour = (hour >= 7 && hour <= 9) || (hour >= 17 && hour <= 19);
-      const trafficMultiplier = isPeakHour ? 1.3 : 0.8;
-      const randomVariation = (Math.random() - 0.5) * 4; // ±2 minutes variation
-      
-      return {
-        hour: `${hour}:00`,
-        eta: Math.max(3, Math.round(baseEta * trafficMultiplier + randomVariation)),
-        hospitals: Math.floor(Math.random() * 3) + hospitals.length,
-        searches: Math.floor(Math.random() * 5) + 1
-      };
-    });
-  };
-
-  const chartData = generateChartData();
-
-  // Generate specialty distribution data
-  const generateSpecialtyData = () => {
-    if (!hospitals.length) return [];
-    
-    const specialties = hospitals.reduce((acc, hospital) => {
-      const specialty = hospital.specialty || 'General';
-      acc[specialty] = (acc[specialty] || 0) + 1;
-      return acc;
-    }, {} as Record<string, number>);
-
-    return Object.entries(specialties).map(([name, value]) => ({
-      name,
-      value,
-      color: getSpecialtyColor(name)
-    }));
-  };
-
-  const getSpecialtyColor = (specialty: string) => {
-    const colors = {
-      'General': '#8884d8',
-      'Cardiology': '#82ca9d', 
-      'Pediatric': '#ffc658',
-      'Emergency': '#ff7300',
-      'Trauma': '#ff0000',
-      'Maternity': '#ff69b4'
-    };
-    return colors[specialty as keyof typeof colors] || '#8884d8';
-  };
-
-  const specialtyData = generateSpecialtyData();
-
-  // Generate recent activity data
-  const generateActivityData = () => {
-    const activities = [];
-    const now = new Date();
-    
-    for (let i = 0; i < 7; i++) {
-      const date = new Date(now);
-      date.setDate(date.getDate() - i);
-      
-      activities.push({
-        date: date.toISOString().split('T')[0],
-        searches: Math.floor(Math.random() * 10) + 1,
-        hospitals: Math.floor(Math.random() * 5) + 1,
-        avgEta: Math.floor(Math.random() * 10) + 8
-      });
+    setDemoAvailability(fastestByEta[0].id, "diverting");
+    setDemoAvailability(fastestByEta[1].id, "accepting");
+    if (fastestByEta[2]) {
+      setDemoAvailability(fastestByEta[2].id, "limited");
     }
-    
-    return activities.reverse();
+    reloadHospitals();
+    toast({
+      title: "Demo operations feed updated",
+      description:
+        "The fastest facility is now diverting, so QuickER will rerank to an eligible alternative.",
+    });
   };
 
-  const activityData = generateActivityData();
-
-  const generateSampleData = () => {
-    const sampleAnalytics = {
-      totalSearches: Math.floor(Math.random() * 50) + 10,
-      avgResponseTime: Math.floor(Math.random() * 5) + 2,
-      lastSearch: new Date().toISOString(),
-      favoriteEmergencyType: 'general',
-      chartData: chartData,
-      specialtyData: specialtyData,
-      activityData: activityData
-    };
-    
-    setUserAnalytics(sampleAnalytics);
-    localStorage.setItem('userAnalytics', JSON.stringify(sampleAnalytics));
-    
+  const resetDemoFeed = () => {
+    clearDemoAvailability();
+    reloadHospitals();
     toast({
-      title: "Sample data generated",
-      description: "Dashboard now shows sample analytics data with charts.",
+      title: "Demo feed cleared",
+      description: "All availability statuses are unknown again.",
     });
+  };
+
+  const averageEta = history.length
+    ? Math.round(
+        history.reduce((total, record) => total + record.etaMinutes, 0) /
+          history.length,
+      )
+    : 0;
+  const liveTrafficDecisions = history.filter(
+    (record) => record.etaSource === "live-traffic",
+  ).length;
+  const acceptingHospitals = hospitals.filter(
+    (hospital) => hospital.availability.status === "accepting",
+  ).length;
+
+  const activityData = useMemo(() => {
+    const grouped = new Map<
+      string,
+      { date: string; searches: number; etaTotal: number }
+    >();
+    history.forEach((record) => {
+      const date = record.timestamp.slice(0, 10);
+      const current = grouped.get(date) ?? { date, searches: 0, etaTotal: 0 };
+      current.searches += 1;
+      current.etaTotal += record.etaMinutes;
+      grouped.set(date, current);
+    });
+    return [...grouped.values()]
+      .sort((first, second) => first.date.localeCompare(second.date))
+      .slice(-7)
+      .map((item) => ({
+        date: item.date.slice(5),
+        searches: item.searches,
+        averageEta: Math.round(item.etaTotal / item.searches),
+      }));
+  }, [history]);
+
+  const exportHistory = () => {
+    downloadCsv(
+      history.map((record) => ({
+        Timestamp: record.timestamp,
+        "Emergency type": record.emergencyType,
+        Candidates: record.candidateCount,
+        Recommendation: record.recommendedHospital,
+        "ETA minutes": record.etaMinutes,
+        "ETA source": record.etaSource,
+        Availability: record.availability,
+      })),
+      `quicker-decisions-${new Date().toISOString().slice(0, 10)}.csv`,
+    );
   };
 
   return (
     <Layout>
-      <div className={`container mx-auto px-6 py-8 space-y-8 ${language === 'ar' ? 'rtl' : ''}`}>
-        <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-foreground mb-4">
-            {t('dashboard.title')}
-          </h1>
+      <div
+        className={`container mx-auto space-y-8 px-4 py-6 sm:px-6 sm:py-8 ${
+          language === "ar" ? "rtl" : ""
+        }`}
+      >
+        <div className="text-center">
+          <h1 className="mb-4 text-3xl font-bold">Emergency access dashboard</h1>
           <p className="text-lg text-muted-foreground">
-            {t('dashboard.subtitle')}
+            Real metrics from this browser plus a clearly labelled operations-feed simulator.
           </p>
         </div>
 
-        {/* KPI Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-          <Card className="p-6 text-center">
-            <div className="flex items-center justify-center w-12 h-12 bg-primary/10 rounded-xl mx-auto mb-4">
-              <Clock className="w-6 h-6 text-primary" />
-            </div>
-            <div className="text-3xl font-bold text-primary mb-2">
-              {kpiData.citywideAverage}
-            </div>
-            <div className="text-sm text-muted-foreground">
-              {t('dashboard.avgETA')}
-            </div>
+        <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+          <Card className="p-5 text-center">
+            <Activity className="mx-auto mb-3 h-6 w-6 text-primary" />
+            <div className="text-3xl font-bold text-primary">{history.length}</div>
+            <p className="text-sm text-muted-foreground">Recorded searches</p>
           </Card>
-
-          <Card className="p-6 text-center">
-            <div className="flex items-center justify-center w-12 h-12 bg-blue-500/10 rounded-xl mx-auto mb-4">
-              <Users className="w-6 h-6 text-blue-500" />
+          <Card className="p-5 text-center">
+            <Clock className="mx-auto mb-3 h-6 w-6 text-primary" />
+            <div className="text-3xl font-bold text-primary">
+              {averageEta ? `${averageEta} min` : "—"}
             </div>
-            <div className="text-3xl font-bold text-blue-500 mb-2">
-              {kpiData.totalHospitals}
-            </div>
-            <div className="text-sm text-muted-foreground">
-              Nearby Hospitals
-            </div>
+            <p className="text-sm text-muted-foreground">Average recommended ETA</p>
           </Card>
-
-          <Card className="p-6 text-center">
-            <div className="flex items-center justify-center w-12 h-12 bg-green-500/10 rounded-xl mx-auto mb-4">
-              <MapPin className="w-6 h-6 text-green-500" />
-            </div>
-            <div className="text-3xl font-bold text-green-500 mb-2">
-              {kpiData.avgDistance}
-            </div>
-            <div className="text-sm text-muted-foreground">
-              Avg Distance
-            </div>
+          <Card className="p-5 text-center">
+            <MapPin className="mx-auto mb-3 h-6 w-6 text-primary" />
+            <div className="text-3xl font-bold text-primary">{hospitals.length}</div>
+            <p className="text-sm text-muted-foreground">Current candidates</p>
           </Card>
-
-          <Card className="p-6 text-center">
-            <div className="flex items-center justify-center w-12 h-12 bg-orange-500/10 rounded-xl mx-auto mb-4">
-              <TrendingUp className="w-6 h-6 text-orange-500" />
+          <Card className="p-5 text-center">
+            <Siren className="mx-auto mb-3 h-6 w-6 text-primary" />
+            <div className="text-3xl font-bold text-primary">
+              {acceptingHospitals}
             </div>
-            <div className="text-3xl font-bold text-orange-500 mb-2">
-              {userAnalytics?.totalSearches || '0'}
-            </div>
-            <div className="text-sm text-muted-foreground">
-              Total Searches
-            </div>
+            <p className="text-sm text-muted-foreground">Accepting in demo feed</p>
           </Card>
         </div>
 
-        {/* Real Charts Section */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* ETA Trends Chart */}
-          <Card className="p-6">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-xl font-semibold flex items-center">
-                <Activity className="w-5 h-5 mr-2" />
-                ETA Trends by Hour
-              </h2>
-              <Badge variant="outline">24 Hours</Badge>
+        <Card className="border-warning/40 bg-warning/5 p-6">
+          <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
+            <div>
+              <div className="mb-2 flex items-center gap-2">
+                <Database className="h-5 w-5" />
+                <h2 className="text-xl font-semibold">Demo operations feed</h2>
+                <Badge variant="outline" className="border-warning text-warning">
+                  Simulated
+                </Badge>
+              </div>
+              <p className="max-w-3xl text-sm text-muted-foreground">
+                These statuses are stored only in this browser. They demonstrate how an authorized ambulance or hospital feed could trigger automatic reranking; they are not real capacity data.
+              </p>
             </div>
-            <div className="h-64">
-              {chartData.length > 0 ? (
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={chartData}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis 
-                      dataKey="hour" 
-                      tick={{ fontSize: 12 }}
-                      interval="preserveStartEnd"
-                    />
-                    <YAxis 
-                      tick={{ fontSize: 12 }}
-                      label={{ value: 'Minutes', angle: -90, position: 'insideLeft' }}
-                    />
-                    <Tooltip 
-                      formatter={(value, name) => [`${value} min`, name === 'eta' ? 'Average ETA' : 'Hospitals']}
-                      labelFormatter={(label) => `Time: ${label}`}
-                    />
-                    <Line 
-                      type="monotone" 
-                      dataKey="eta" 
-                      stroke="#dc2626" 
-                      strokeWidth={3}
-                      dot={{ fill: '#dc2626', strokeWidth: 2, r: 4 }}
-                      activeDot={{ r: 6, stroke: '#dc2626', strokeWidth: 2 }}
-                    />
-                  </LineChart>
-                </ResponsiveContainer>
-              ) : (
-                <div className="h-full bg-muted/30 rounded-xl flex items-center justify-center">
-                  <div className="text-center text-muted-foreground">
-                    <BarChart3 className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                    <p className="text-sm">No data available</p>
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
-                      className="mt-4"
-                      onClick={generateSampleData}
-                    >
-                      Generate Sample Data
-                    </Button>
-                  </div>
-                </div>
-              )}
+            <div className="flex flex-wrap gap-2">
+              <Button onClick={runDemoScenario} disabled={hospitals.length < 2}>
+                <Siren className="mr-2 h-4 w-4" /> Run rerouting demo
+              </Button>
+              <Button variant="outline" onClick={resetDemoFeed}>
+                <RotateCcw className="mr-2 h-4 w-4" /> Reset
+              </Button>
             </div>
-          </Card>
-
-          {/* Hospital Specialties Chart */}
-          <Card className="p-6">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-xl font-semibold flex items-center">
-                <BarChart3 className="w-5 h-5 mr-2" />
-                Hospital Specialties
-              </h2>
-              <Badge variant="outline">{hospitals.length} Total</Badge>
-            </div>
-            <div className="h-64">
-              {specialtyData.length > 0 ? (
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={specialtyData}
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={60}
-                      outerRadius={100}
-                      paddingAngle={5}
-                      dataKey="value"
-                    >
-                      {specialtyData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={entry.color} />
-                      ))}
-                    </Pie>
-                    <Tooltip 
-                      formatter={(value, name) => [`${value} hospitals`, name]}
-                    />
-                  </PieChart>
-                </ResponsiveContainer>
-              ) : (
-                <div className="h-full bg-muted/30 rounded-xl flex items-center justify-center">
-                  <div className="text-center text-muted-foreground">
-                    <BarChart3 className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                    <p className="text-sm">No specialty data</p>
-                  </div>
-                </div>
-              )}
-            </div>
-          </Card>
-        </div>
-
-        {/* Recent Activity Chart */}
-        <Card className="p-6">
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-xl font-semibold flex items-center">
-              <TrendingUp className="w-5 h-5 mr-2" />
-              Recent Activity (7 Days)
-            </h2>
-            <Badge variant="outline">Last 7 Days</Badge>
           </div>
-          <div className="h-64">
-            {activityData.length > 0 ? (
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={activityData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis 
-                    dataKey="date" 
-                    tick={{ fontSize: 12 }}
-                    tickFormatter={(value) => new Date(value).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                  />
-                  <YAxis 
-                    tick={{ fontSize: 12 }}
-                    label={{ value: 'Count', angle: -90, position: 'insideLeft' }}
-                  />
-                  <Tooltip 
-                    formatter={(value, name) => [value, name === 'searches' ? 'Searches' : name === 'hospitals' ? 'Hospitals' : 'Avg ETA (min)']}
-                    labelFormatter={(label) => `Date: ${new Date(label).toLocaleDateString()}`}
-                  />
-                  <Bar dataKey="searches" fill="#3b82f6" name="Searches" />
-                  <Bar dataKey="hospitals" fill="#10b981" name="Hospitals" />
-                </BarChart>
-              </ResponsiveContainer>
-            ) : (
-              <div className="h-full bg-muted/30 rounded-xl flex items-center justify-center">
-                <div className="text-center text-muted-foreground">
-                  <TrendingUp className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                  <p className="text-sm">No activity data</p>
+        </Card>
+
+        {!userLocation && (
+          <Card className="p-5 text-center">
+            <p className="mb-3 text-muted-foreground">
+              Location was not shared, so the current hospital feed is empty.
+            </p>
+            <Button
+              variant="outline"
+              onClick={() => setUserLocation({ lat: 33.8938, lng: 35.5018 })}
+            >
+              Use Beirut demo point
+            </Button>
+          </Card>
+        )}
+
+        <Card className="p-6">
+          <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h2 className="text-xl font-semibold">Current ranked facilities</h2>
+              <p className="text-sm text-muted-foreground">
+                {routingStatus.notice || "Share a location to load facilities."}
+              </p>
+            </div>
+            <Button variant="outline" onClick={reloadHospitals} disabled={!userLocation || loading}>
+              <RefreshCw className={`mr-2 h-4 w-4 ${loading ? "animate-spin" : ""}`} />
+              Refresh
+            </Button>
+          </div>
+
+          <div className="space-y-3">
+            {hospitals.map((hospital, index) => (
+              <div
+                key={hospital.id}
+                className="grid gap-3 rounded-xl border p-4 sm:grid-cols-[minmax(0,1fr)_auto_auto] sm:items-center"
+              >
+                <div className="min-w-0">
+                  <p className="text-xs text-muted-foreground">Rank #{index + 1}</p>
+                  <h3 className="truncate font-semibold">{hospital.name}</h3>
+                  <p className="text-sm text-muted-foreground">
+                    {hospital.eta} • {hospital.distance} • {hospital.etaSource}
+                  </p>
                 </div>
+                <Badge
+                  variant="outline"
+                  className={statusStyles[hospital.availability.status]}
+                >
+                  {availabilityLabel(hospital.availability.status)}
+                </Badge>
+                <Select
+                  value={hospital.availability.status}
+                  onValueChange={(value: AvailabilityStatus) =>
+                    updateStatus(hospital.id, value)
+                  }
+                >
+                  <SelectTrigger className="w-full sm:w-40">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="accepting">Accepting</SelectItem>
+                    <SelectItem value="limited">Limited</SelectItem>
+                    <SelectItem value="diverting">Diverting</SelectItem>
+                    <SelectItem value="unknown">Unknown</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            ))}
+            {!hospitals.length && (
+              <div className="rounded-xl bg-muted/40 p-8 text-center text-muted-foreground">
+                No current hospital data.
               </div>
             )}
           </div>
         </Card>
 
-        {/* Interactive Map with Hospitals */}
         <Card className="p-6">
-          <div className={`flex items-center justify-between mb-6 ${language === 'ar' ? 'flex-row-reverse' : ''}`}>
-            <h2 className="text-xl font-semibold">
-              {t('dashboard.neighborhoodTimes')}
-            </h2>
-            <div className="flex gap-2">
-              <Button variant="outline" size="sm" onClick={exportHospitalData}>
-                <Download className="w-4 h-4 mr-2" />
-                Export Hospitals
-              </Button>
-              <Button variant="outline" size="sm" onClick={exportAnalyticsData}>
-                <FileText className="w-4 h-4 mr-2" />
-                Export Analytics
-              </Button>
+          <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h2 className="flex items-center text-xl font-semibold">
+                <BarChart3 className="mr-2 h-5 w-5" /> Local decision history
+              </h2>
+              <p className="text-sm text-muted-foreground">
+                No precise coordinates are stored. {liveTrafficDecisions} searches used live traffic.
+              </p>
             </div>
+            <Button variant="outline" onClick={exportHistory} disabled={!history.length}>
+              <Download className="mr-2 h-4 w-4" /> Export CSV
+            </Button>
           </div>
-          
-          {loading ? (
-            <div className="h-80 bg-muted/30 rounded-xl flex items-center justify-center">
-              <div className="text-center text-muted-foreground">
-                <Clock className="w-12 h-12 mx-auto mb-4 opacity-50 animate-spin" />
-                <p className="text-sm">Loading hospitals...</p>
-              </div>
-            </div>
-          ) : hospitals.length > 0 ? (
-            <Map 
-              ref={mapRef}
-              className="h-80" 
-              hospitals={hospitals}
-              showUserLocation={true}
-              showIsochrones={true}
-            />
-          ) : (
-            <div className="h-80 bg-muted/30 rounded-xl flex items-center justify-center">
-              <div className="text-center text-muted-foreground">
-                <MapPin className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                <p className="text-sm">No hospitals found. Enable location access to see nearby hospitals.</p>
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  className="mt-4"
-                  onClick={() => {
-                    if (navigator.geolocation) {
-                      navigator.geolocation.getCurrentPosition(
-                        (position) => {
-                          const { latitude, longitude } = position.coords;
-                          setUserLocation({ lat: latitude, lng: longitude });
-                          fetchHospitals(latitude, longitude, { radius: 15, emergencyType: 'general' });
-                        }
-                      );
-                    }
-                  }}
-                >
-                  Enable Location
-                </Button>
-              </div>
-            </div>
-          )}
-        </Card>
 
-        {/* User-Specific Hospital Data */}
-        <Card className="p-6">
-          <div className={`flex items-center justify-between mb-6 ${language === 'ar' ? 'flex-row-reverse' : ''}`}>
-            <h2 className="text-xl font-semibold">
-              Nearby Hospitals Analysis
-            </h2>
-            <div className="flex gap-2">
-              <Button variant="outline" size="sm" onClick={generateSampleData}>
-                <BarChart3 className="w-4 h-4 mr-2" />
-                Generate Sample Data
-              </Button>
-              <Button variant="outline" size="sm" onClick={exportHospitalData}>
-                <Download className="w-4 h-4 mr-2" />
-                Export CSV
-              </Button>
-            </div>
+          <div className="h-64">
+            {activityData.length ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={activityData}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="date" />
+                  <YAxis allowDecimals={false} />
+                  <Tooltip />
+                  <Bar dataKey="searches" name="Searches" fill="#2563eb" />
+                  <Bar dataKey="averageEta" name="Average ETA" fill="#dc2626" />
+                </BarChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="flex h-full items-center justify-center rounded-xl bg-muted/40 text-center text-muted-foreground">
+                Use Find Hospital to create real local history. No sample data is fabricated.
+              </div>
+            )}
           </div>
-          
-          {userAreas.length > 0 ? (
-            <div className="space-y-4">
-              {userAreas.map((area, index) => (
-                <div 
-                  key={area.area}
-                  className={`flex items-center justify-between p-4 border border-border rounded-xl hover:bg-muted/50 transition-colors ${language === 'ar' ? 'flex-row-reverse' : ''}`}
-                >
-                  <div className="flex items-center">
-                    <div className="w-8 h-8 bg-primary/10 text-primary rounded-lg flex items-center justify-center text-sm font-semibold mr-4">
-                      🏥
-                    </div>
-                    <div>
-                      <div className="font-semibold">{area.area}</div>
-                      <div className="text-sm text-muted-foreground">
-                        {area.specialty} • {area.distance}
-                      </div>
-                    </div>
-                  </div>
-                  <div className={`text-right ${language === 'ar' ? 'text-left' : ''}`}>
-                    <div className="text-lg font-bold text-primary">{area.avgEta}</div>
-                    <Badge 
-                      variant="outline" 
-                      className={
-                        area.change.startsWith('+') ? 'text-destructive border-destructive' :
-                        area.change.startsWith('-') ? 'text-success border-success' :
-                        'text-muted-foreground'
-                      }
-                    >
-                      {area.change}
-                    </Badge>
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="text-center py-12 text-muted-foreground">
-              <MapPin className="w-12 h-12 mx-auto mb-4 opacity-50" />
-              <p className="text-sm">No hospital data available. Enable location access to see nearby hospitals.</p>
-            </div>
-          )}
         </Card>
       </div>
     </Layout>

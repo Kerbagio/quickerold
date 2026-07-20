@@ -1,7 +1,7 @@
 {
   "name": "QuickER",
   "tagline": "Get to the right hospital, faster.",
-  "description": "Find the nearest emergency care facility with real-time routing. Because in emergencies, minutes matter.",
+  "description": "Compare nearby hospitals by suitable emergency care and fastest available road ETA, with every data source clearly labelled.",
   "logo": "/logo-quicker.svg",
   "favicon": "/favicon.svg",
   "colors": {

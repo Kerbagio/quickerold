@@ -1,143 +1,209 @@
-import { useState, useEffect } from "react";
-import { Card } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+import { useEffect, useState } from "react";
+import { useSearchParams } from "react-router-dom";
+import { AlertTriangle, Filter, RefreshCw } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
 import { Slider } from "@/components/ui/slider";
-import { Filter, RefreshCw } from "lucide-react";
 import Layout from "@/components/Layout";
 import Map from "@/components/Map";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useHospitals } from "@/hooks/useHospitals";
+import type { IsochroneSource } from "@/services/isochrones";
+import {
+  normalizeEmergencyType,
+  type EmergencyType,
+} from "@/services/emergency";
 
 const Options = () => {
-  const [selectedType, setSelectedType] = useState<string>("general");
+  const [searchParams] = useSearchParams();
+  const [selectedType, setSelectedType] = useState(() =>
+    normalizeEmergencyType(searchParams.get("emergencyType")),
+  );
   const [radius, setRadius] = useState([8]);
-  const [userLocation, setUserLocation] = useState<{lat: number; lng: number} | null>(null);
+  const [userLocation, setUserLocation] = useState<{
+    lat: number;
+    lng: number;
+  } | null>(null);
+  const [isochroneSource, setIsochroneSource] =
+    useState<IsochroneSource>("distance-estimate");
   const { t, language } = useLanguage();
-  
-  const { hospitals, loading, fetchHospitals } = useHospitals();
-  
-  const emergencyTypes = [
-    { id: "general", label: t('emergency.general'), active: true },
-    { id: "maternity", label: t('emergency.maternity'), active: false },
-    { id: "pediatric", label: t('emergency.pediatric'), active: false },
-    { id: "cardiac", label: t('emergency.cardiac'), active: false },
+  const {
+    hospitals,
+    loading,
+    fetchHospitals,
+    routingStatus,
+    specialtyFallback,
+  } = useHospitals();
+
+  const emergencyTypes: Array<{ id: EmergencyType; label: string }> = [
+    { id: "general", label: t("emergency.general") },
+    { id: "maternity", label: t("emergency.maternity") },
+    { id: "pediatric", label: t("emergency.pediatric") },
+    { id: "cardiac", label: t("emergency.cardiac") },
   ];
 
-  // Get user location on mount
   useEffect(() => {
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          const { latitude, longitude } = position.coords;
-          setUserLocation({ lat: latitude, lng: longitude });
-        },
-        (error) => {
-          console.error('Geolocation error:', error);
-        }
-      );
-    }
+    if (!navigator.geolocation) return;
+    navigator.geolocation.getCurrentPosition(
+      (position) =>
+        setUserLocation({
+          lat: position.coords.latitude,
+          lng: position.coords.longitude,
+        }),
+      () => undefined,
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 30000 },
+    );
   }, []);
 
-  // Fetch hospitals when location, radius, or emergency type changes
   useEffect(() => {
-    if (userLocation) {
-      fetchHospitals(userLocation.lat, userLocation.lng, {
-        radius: radius[0],
-        emergencyType: selectedType
-      });
-    }
-  }, [userLocation, radius, selectedType, fetchHospitals]);
+    if (!userLocation) return;
+    void fetchHospitals(userLocation.lat, userLocation.lng, {
+      radius: radius[0],
+      emergencyType: selectedType,
+    });
+    // A new location should run once. Filter/radius changes are applied with the button.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userLocation, fetchHospitals]);
 
-  const handleTypeToggle = (typeId: string) => {
-    setSelectedType(typeId);
-  };
-
-  const handleLocationSelect = (lat: number, lng: number) => {
-    setUserLocation({ lat, lng });
+  const updateResults = () => {
+    if (!userLocation) return;
+    void fetchHospitals(userLocation.lat, userLocation.lng, {
+      radius: radius[0],
+      emergencyType: selectedType,
+    });
   };
 
   return (
     <Layout>
-      <div className={`container mx-auto px-6 py-8 space-y-8 ${language === 'ar' ? 'rtl' : ''}`}>
-        <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-foreground mb-4">
-            {t('options.title')}
-          </h1>
+      <div
+        className={`container mx-auto space-y-8 px-4 py-6 sm:px-6 sm:py-8 ${
+          language === "ar" ? "rtl" : ""
+        }`}
+      >
+        <div className="text-center">
+          <h1 className="mb-4 text-3xl font-bold">{t("options.title")}</h1>
           <p className="text-lg text-muted-foreground">
-            {t('options.subtitle')}
+            Filter the candidate list and explore reachable areas without hiding data limitations.
           </p>
         </div>
 
-        {/* Emergency Type Selection */}
         <Card className="p-6">
-          <h2 className="text-xl font-semibold mb-6 flex items-center">
-            <Filter className="w-5 h-5 mr-2" />
-            {t('options.emergencyType')}
+          <h2 className="mb-5 flex items-center text-xl font-semibold">
+            <Filter className="mr-2 h-5 w-5" />
+            {t("options.emergencyType")}
           </h2>
           <div className="flex flex-wrap gap-3">
             {emergencyTypes.map((type) => (
-              <Badge
+              <Button
                 key={type.id}
+                type="button"
                 variant={selectedType === type.id ? "default" : "outline"}
-                className="px-4 py-2 cursor-pointer hover:bg-primary/10 transition-colors"
-                onClick={() => handleTypeToggle(type.id)}
+                onClick={() => setSelectedType(type.id)}
               >
                 {type.label}
-              </Badge>
+              </Button>
             ))}
           </div>
+          <p className="mt-4 text-sm text-muted-foreground">
+            Specialty matches come from OpenStreetMap tags or facility names and must be confirmed with the facility.
+          </p>
         </Card>
 
-        {/* Search Radius */}
         <Card className="p-6">
-          <h2 className="text-xl font-semibold mb-6">
-            {t('options.searchRadius')}: {radius[0]} km
-          </h2>
-          <div className="space-y-4">
-            <Slider
-              value={radius}
-              onValueChange={setRadius}
-              max={12}
-              min={2}
-              step={1}
-              className="w-full"
-            />
-            <div className="flex justify-between text-sm text-muted-foreground">
-              <span>2 km</span>
-              <span>12 km</span>
-            </div>
+          <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+            <h2 className="text-xl font-semibold">
+              {t("options.searchRadius")}: {radius[0]} km
+            </h2>
+            <Button onClick={updateResults} disabled={!userLocation || loading}>
+              <RefreshCw
+                className={`mr-2 h-4 w-4 ${loading ? "animate-spin" : ""}`}
+              />
+              {t("options.updateResults")}
+            </Button>
+          </div>
+          <Slider
+            value={radius}
+            onValueChange={setRadius}
+            max={20}
+            min={2}
+            step={1}
+          />
+          <div className="mt-3 flex justify-between text-sm text-muted-foreground">
+            <span>2 km</span>
+            <span>20 km</span>
           </div>
         </Card>
 
-        {/* Isochrone Map */}
+        {!userLocation && (
+          <Card className="p-5 text-center">
+            <p className="mb-3 text-muted-foreground">
+              Share a location or use the presentation demo point.
+            </p>
+            <Button
+              variant="outline"
+              onClick={() => setUserLocation({ lat: 33.8938, lng: 35.5018 })}
+            >
+              Use Beirut demo point
+            </Button>
+          </Card>
+        )}
+
         <Card className="p-6">
-          <h2 className="text-xl font-semibold mb-6">
-            {t('options.reachableAreas')}
-          </h2>
-          <div className="mb-4">
-            <div className="flex items-center gap-6 text-sm">
-              <div className="flex items-center gap-2">
-                <div className="w-4 h-4 bg-success rounded opacity-60"></div>
-                <span>{t('options.legend.5min')}</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="w-4 h-4 bg-warning rounded opacity-60"></div>
-                <span>{t('options.legend.10min')}</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="w-4 h-4 bg-destructive rounded opacity-60"></div>
-                <span>{t('options.legend.15min')}</span>
-              </div>
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+            <h2 className="text-xl font-semibold">
+              {t("options.reachableAreas")}
+            </h2>
+            <Badge
+              variant="outline"
+              className={
+                isochroneSource === "road-network"
+                  ? "border-success text-success"
+                  : "border-warning text-warning"
+              }
+            >
+              {isochroneSource === "road-network"
+                ? "Road-network contours"
+                : "Estimated circles"}
+            </Badge>
+          </div>
+
+          <div className="mb-4 flex flex-wrap items-center gap-5 text-sm">
+            <div className="flex items-center gap-2">
+              <div className="h-4 w-4 rounded bg-success opacity-60" /> 5 min
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="h-4 w-4 rounded bg-warning opacity-60" /> 10 min
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="h-4 w-4 rounded bg-destructive opacity-60" /> 15 min
             </div>
           </div>
-          <Map 
-            className="h-80" 
+
+          <div className="mb-4 flex gap-2 rounded-xl bg-muted/50 p-3 text-sm text-muted-foreground">
+            <AlertTriangle className="h-4 w-4 shrink-0" />
+            {isochroneSource === "road-network"
+              ? "Contours follow roads but do not include live traffic."
+              : "No free isochrone key is configured. These circles are approximate and are not road travel-time boundaries."}
+          </div>
+
+          <Map
+            className="h-80 lg:h-96"
             hospitals={hospitals}
-            onLocationSelect={handleLocationSelect}
-            showIsochrones={true}
+            userLocation={userLocation}
+            onLocationSelect={(lat, lng) => setUserLocation({ lat, lng })}
+            onIsochroneSourceChange={setIsochroneSource}
+            showIsochrones
           />
         </Card>
+
+        {(routingStatus.notice || specialtyFallback) && (
+          <Card className="p-4 text-sm text-muted-foreground">
+            {specialtyFallback
+              ? "No matching specialty tag was found; general hospitals are displayed for confirmation."
+              : routingStatus.notice}
+          </Card>
+        )}
       </div>
     </Layout>
   );

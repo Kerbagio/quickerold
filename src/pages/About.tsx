@@ -1,201 +1,169 @@
-import { Card } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Shield, MapPin, Clock, Heart, ExternalLink, Phone } from "lucide-react";
 import { Link } from "react-router-dom";
+import {
+  ArrowLeft,
+  CheckCircle2,
+  Clock,
+  ExternalLink,
+  MapPin,
+  Shield,
+  WalletCards,
+} from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
 import { useLanguage } from "@/contexts/LanguageContext";
 
 const About = () => {
-  const { t, language } = useLanguage();
-  const apiCredits = [
-    { name: "Mapbox", description: "Map tiles and routing services", url: "https://mapbox.com" },
-    { name: "OpenStreetMap", description: "Geographic data", url: "https://openstreetmap.org" },
-    { name: "Real-time Traffic APIs", description: "Live traffic and ETA calculations", url: "#" }
-  ];
+  const { language } = useLanguage();
 
-  const emergencyNumbers = [
-    { country: "United States", number: "911", description: "Police, Fire, Medical" },
-    { country: "United Kingdom", number: "999", description: "Emergency Services" },
-    { country: "European Union", number: "112", description: "Emergency Services" },
-    { country: "Canada", number: "911", description: "Emergency Services" },
-    { country: "Australia", number: "000", description: "Emergency Services" }
+  const providers = [
+    {
+      name: "OpenStreetMap / Overpass",
+      purpose: "Hospital locations and public map data",
+      mode: "Free, best-effort",
+      url: "https://www.openstreetmap.org",
+    },
+    {
+      name: "OSRM",
+      purpose: "Road-network ETA matrix and route geometry",
+      mode: "Free public demo service",
+      url: "https://project-osrm.org",
+    },
+    {
+      name: "TomTom",
+      purpose: "Future organization-managed live-traffic ETA matrix",
+      mode: "Not active on static demo",
+    },
+    {
+      name: "openrouteservice",
+      purpose: "Future organization-managed 5/10/15-minute road contours",
+      mode: "Not active on static demo",
+    },
   ];
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="bg-background border-b border-border">
-        <div className="container mx-auto px-6 py-4">
-          <div className="flex items-center justify-between">
-            <Button variant="ghost" asChild>
-              <Link to="/home" className="flex items-center">
-                <ArrowLeft className="w-4 h-4 mr-2" />
-                {t('about.backToHome')}
-              </Link>
-            </Button>
-            <img 
-              src="/logo-quicker.svg" 
-              alt="QuickER Logo" 
-              className="h-8 w-auto"
-            />
-            <div className="w-20"></div> {/* Spacer for centering */}
-          </div>
+    <div className={`min-h-screen bg-background ${language === "ar" ? "rtl" : ""}`}>
+      <header className="border-b bg-background">
+        <div className="container mx-auto flex items-center justify-between px-4 py-4 sm:px-6">
+          <Button variant="ghost" asChild>
+            <Link to="/home">
+              <ArrowLeft className="mr-2 h-4 w-4" /> Back to Home
+            </Link>
+          </Button>
+          <img
+            src={`${import.meta.env.BASE_URL}logo-quicker.svg`}
+            alt="QuickER"
+            className="h-8 w-auto"
+          />
+          <div className="w-28" />
         </div>
       </header>
 
-      <main className="container mx-auto px-6 py-12 max-w-4xl">
-        {/* Hero Section */}
-        <div className="text-center mb-12">
-          <Badge variant="secondary" className="mb-4">
-            {t('about.badge')}
+      <main className="container mx-auto max-w-4xl space-y-8 px-4 py-10 sm:px-6">
+        <div className="text-center">
+          <Badge className="mb-4" variant="secondary">
+            Free-first emergency access project
           </Badge>
-          <h1 className="text-4xl lg:text-5xl font-bold text-foreground mb-6">
-            {t('about.heroTitle')}
+          <h1 className="mb-5 text-4xl font-bold lg:text-5xl">
+            Not the nearest hospital—the fastest suitable option
           </h1>
-          <p className="text-xl text-muted-foreground max-w-3xl mx-auto leading-relaxed">
-            {t('about.heroSubtitle')}
+          <p className="mx-auto max-w-3xl text-lg text-muted-foreground">
+            QuickER compares nearby hospitals by travel time, specialty metadata and availability status while showing exactly which information is live, estimated or simulated.
           </p>
         </div>
 
-        {/* Main Content */}
-        <div className="space-y-12">
-          {/* What We Do */}
-          <Card className="p-8">
-            <div className="flex items-center mb-6">
-              <MapPin className="w-6 h-6 mr-3 text-primary" />
-              <h2 className="text-2xl font-bold">{t('about.whatWeDo')}</h2>
-            </div>
-            <div className="prose prose-gray max-w-none">
-              <p className="text-lg leading-relaxed mb-6">
-                <strong>{t('about.whatWeDoDesc1')}</strong>
-              </p>
-              <p className="text-muted-foreground mb-6">
-                {t('about.whatWeDoDesc2')}
-              </p>
-              <p className="text-muted-foreground">
-                {t('about.whatWeDoDesc3')}
-              </p>
-            </div>
-          </Card>
-
-          {/* Important Disclaimer */}
-          <Card className="p-8 border-2 border-destructive/20 bg-destructive/5">
-            <div className="flex items-center mb-6">
-              <Shield className="w-6 h-6 mr-3 text-destructive" />
-              <h2 className="text-2xl font-bold text-destructive">{t('about.disclaimer')}</h2>
-            </div>
-            <div className="space-y-4 text-lg">
-              <p className="font-semibold">
-                {t('about.disclaimerTitle')}
-              </p>
-              <p className="text-muted-foreground">
-                {t('about.disclaimerDesc')}
-              </p>
-            </div>
-          </Card>
-
-          {/* Emergency Numbers */}
-          <Card className="p-8">
-            <div className="flex items-center mb-6">
-              <Phone className="w-6 h-6 mr-3 text-primary" />
-              <h2 className="text-2xl font-bold">{t('about.emergencyNumbers')}</h2>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {emergencyNumbers.map((emergency) => (
-                <div key={emergency.country} className="p-4 border border-border rounded-xl">
-                  <div className="font-semibold text-lg">{t(`emergency.countries.${emergency.country.toLowerCase().replace(/\s+/g, '').substring(0,2)}`) || emergency.country}</div>
-                  <div className="text-2xl font-bold text-primary my-2">{emergency.number}</div>
-                  <div className="text-sm text-muted-foreground">{t(`emergency.services.${emergency.description.includes('Police') ? 'police' : 'general'}`) || emergency.description}</div>
-                </div>
-              ))}
-            </div>
-          </Card>
-
-          {/* How It Works */}
-          <Card className="p-8">
-            <div className="flex items-center mb-6">
-              <Clock className="w-6 h-6 mr-3 text-primary" />
-              <h2 className="text-2xl font-bold">{t('about.howItWorks')}</h2>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <div className="text-center">
-                <div className="w-12 h-12 bg-primary/10 rounded-xl flex items-center justify-center mx-auto mb-4">
-                  <MapPin className="w-6 h-6 text-primary" />
-                </div>
-                <h3 className="font-semibold mb-2">{t('about.step1Title')}</h3>
-                <p className="text-sm text-muted-foreground">
-                  {t('about.step1Desc')}
-                </p>
+        <Card className="p-7">
+          <div className="mb-5 flex items-center gap-3">
+            <WalletCards className="h-6 w-6 text-primary" />
+            <h2 className="text-2xl font-semibold">The $0 promise</h2>
+          </div>
+          <p className="mb-5 text-muted-foreground">
+            The core app does not require a payment method. If a free provider reaches its limit, QuickER falls back to a less precise mode instead of creating a charge.
+          </p>
+          <div className="grid gap-3 sm:grid-cols-2">
+            {[
+              "No automatic paid overages",
+              "No precise coordinates in decision history",
+              "Provider and timestamp shown with each ETA",
+              "Usable road estimates when live traffic is unavailable",
+            ].map((item) => (
+              <div key={item} className="flex gap-2 rounded-xl bg-muted/40 p-3 text-sm">
+                <CheckCircle2 className="h-4 w-4 shrink-0 text-success" /> {item}
               </div>
-              <div className="text-center">
-                <div className="w-12 h-12 bg-primary/10 rounded-xl flex items-center justify-center mx-auto mb-4">
-                  <Clock className="w-6 h-6 text-primary" />
-                </div>
-                <h3 className="font-semibold mb-2">{t('about.step2Title')}</h3>
-                <p className="text-sm text-muted-foreground">
-                  {t('about.step2Desc')}
-                </p>
-              </div>
-              <div className="text-center">
-                <div className="w-12 h-12 bg-primary/10 rounded-xl flex items-center justify-center mx-auto mb-4">
-                  <Heart className="w-6 h-6 text-primary" />
-                </div>
-                <h3 className="font-semibold mb-2">{t('about.step3Title')}</h3>
-                <p className="text-sm text-muted-foreground">
-                  {t('about.step3Desc')}
-                </p>
-              </div>
-            </div>
-          </Card>
+            ))}
+          </div>
+        </Card>
 
-          {/* API Credits */}
-          <Card className="p-8">
-            <div className="flex items-center mb-6">
-              <ExternalLink className="w-6 h-6 mr-3 text-primary" />
-              <h2 className="text-2xl font-bold">{t('about.techPartners')}</h2>
+        <Card className="p-7">
+          <div className="mb-5 flex items-center gap-3">
+            <Clock className="h-6 w-6 text-primary" />
+            <h2 className="text-2xl font-semibold">How a search works</h2>
+          </div>
+          <div className="grid gap-5 md:grid-cols-3">
+            <div>
+              <MapPin className="mb-3 h-6 w-6 text-primary" />
+              <h3 className="font-semibold">1. Discover</h3>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Find nearby hospitals from OpenStreetMap and apply the selected emergency filter.
+              </p>
             </div>
-            <p className="text-muted-foreground mb-6">
-              {t('about.techPartnersDesc')}
-            </p>
-            <div className="space-y-4">
-              {apiCredits.map((credit) => (
-                <div key={credit.name} className="flex items-center justify-between p-4 border border-border rounded-xl">
-                  <div>
-                    <div className="font-semibold">{credit.name}</div>
-                    <div className="text-sm text-muted-foreground">{credit.description}</div>
-                  </div>
-                  {credit.url !== "#" && (
-                    <Button variant="ghost" size="sm" asChild>
-                      <a href={credit.url} target="_blank" rel="noopener noreferrer">
-                        <ExternalLink className="w-4 h-4" />
+            <div>
+              <Clock className="mb-3 h-6 w-6 text-primary" />
+              <h3 className="font-semibold">2. Compare</h3>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Narrow candidates by road ETA and optionally compare the fastest five with live traffic.
+              </p>
+            </div>
+            <div>
+              <Shield className="mb-3 h-6 w-6 text-primary" />
+              <h3 className="font-semibold">3. Explain</h3>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Prefer eligible facilities, show the recommendation and disclose every uncertainty.
+              </p>
+            </div>
+          </div>
+        </Card>
+
+        <Card className="p-7">
+          <h2 className="mb-5 text-2xl font-semibold">Free data providers</h2>
+          <div className="space-y-3">
+            {providers.map((provider) => (
+              <div
+                key={provider.name}
+                className="flex flex-col justify-between gap-3 rounded-xl border p-4 sm:flex-row sm:items-center"
+              >
+                <div>
+                  <h3 className="font-semibold">{provider.name}</h3>
+                  <p className="text-sm text-muted-foreground">{provider.purpose}</p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Badge variant="outline">{provider.mode}</Badge>
+                  {provider.url ? (
+                    <Button variant="ghost" size="icon" asChild>
+                      <a href={provider.url} target="_blank" rel="noopener noreferrer">
+                        <ExternalLink className="h-4 w-4" />
                       </a>
                     </Button>
-                  )}
+                  ) : null}
                 </div>
-              ))}
-            </div>
-          </Card>
+              </div>
+            ))}
+          </div>
+        </Card>
 
-          {/* Contact & Support */}
-          <Card className="p-8 text-center bg-hero-gradient">
-            <h2 className="text-2xl font-bold mb-4">{t('about.questionsTitle')}</h2>
-            <p className="text-muted-foreground mb-6">
-              {t('about.questionsDesc')}
-            </p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Button variant="outline" asChild>
-                <Link to="/settings">
-                  {t('about.viewSettings')}
-                </Link>
-              </Button>
-              <Button asChild>
-                <a href="mailto:support@quicker.app">
-                  {t('about.contactSupport')}
-                </a>
-              </Button>
-            </div>
-          </Card>
-        </div>
+        <Card className="border-destructive/30 bg-destructive/5 p-7">
+          <div className="mb-4 flex items-center gap-3">
+            <Shield className="h-6 w-6 text-destructive" />
+            <h2 className="text-2xl font-semibold text-destructive">Important limitations</h2>
+          </div>
+          <ul className="list-disc space-y-2 pl-5 text-sm text-muted-foreground">
+            <li>QuickER is not an ambulance dispatcher and does not provide medical advice.</li>
+            <li>Hospital specialties from public map data may be incomplete or outdated.</li>
+            <li>Availability is simulated unless connected to an authorized operational feed.</li>
+            <li>Free public providers offer no guaranteed uptime.</li>
+            <li>For urgent situations, call local emergency services and do not delay care to use the app.</li>
+          </ul>
+        </Card>
       </main>
     </div>
   );

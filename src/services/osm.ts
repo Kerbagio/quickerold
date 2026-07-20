@@ -9,6 +9,19 @@ export interface OSMHospital {
   tags?: Record<string, string>;
 }
 
+interface OverpassElement {
+  id: number;
+  type: "node" | "way" | "relation";
+  lat?: number;
+  lon?: number;
+  center?: { lat: number; lon: number };
+  tags?: Record<string, string>;
+}
+
+interface OverpassResponse {
+  elements?: OverpassElement[];
+}
+
 const OVERPASS_ENDPOINTS = [
   "https://overpass-api.de/api/interpreter",
   "https://overpass.kumi.systems/api/interpreter",
@@ -38,19 +51,20 @@ const fetchFromEndpoint = async (
       throw new Error(`Overpass request failed with ${response.status}`);
     }
 
-    const data = await response.json();
-    const elements: any[] = data?.elements || [];
+    const data = (await response.json()) as OverpassResponse;
+    const elements = data.elements ?? [];
 
     return elements
       .map((element) => {
-        const center = element.type === "node"
-          ? { lat: element.lat, lon: element.lon }
-          : element.center;
+        const center =
+          element.type === "node"
+            ? { lat: element.lat, lon: element.lon }
+            : element.center;
 
-        if (!center) return null;
+        if (!center?.lat || !center?.lon) return null;
 
         return {
-          id: String(element.id),
+          id: `${element.type}-${element.id}`,
           name: element.tags?.name || "Unnamed Hospital",
           lat: center.lat,
           lng: center.lon,
@@ -86,9 +100,8 @@ export async function fetchHospitalsFromOSM(
   const query = `
     [out:json][timeout:15];
     (
-      node["amenity"="hospital"](around:${radiusMeters},${lat},${lng});
-      way["amenity"="hospital"](around:${radiusMeters},${lat},${lng});
-      relation["amenity"="hospital"](around:${radiusMeters},${lat},${lng});
+      nwr["amenity"="hospital"](around:${radiusMeters},${lat},${lng});
+      nwr["healthcare"="hospital"](around:${radiusMeters},${lat},${lng});
     );
     out center tags 50;
   `;

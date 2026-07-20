@@ -70,7 +70,7 @@ const Onboarding = () => {
     } catch (error) {
       toast({
         title: "Location access denied",
-        description: "You can still use the app by entering addresses manually.",
+        description: "You can still explore the app with the clearly labelled Beirut demo point.",
         variant: "destructive"
       });
     }

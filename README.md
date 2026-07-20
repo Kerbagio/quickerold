@@ -1,73 +1,83 @@
-# Welcome to your Lovable project
+# QuickER
 
-## Project info
+QuickER ranks nearby hospitals by the fastest suitable travel option—not straight-line distance alone. It combines public hospital data, road travel times, emergency-type filters, an optional live-traffic layer, and a clearly labelled demo availability feed.
 
-**URL**: (https://quickerold.lovable.app/
+> QuickER is routing decision support, not a medical service or ambulance dispatcher. It does not diagnose, confirm hospital capability, or replace local emergency services.
 
-## How can I edit this code?
+## What works with no account or API key
 
-There are several ways of editing your application.
+- Browser GPS or a clearly labelled Beirut presentation point.
+- Nearby hospital discovery from OpenStreetMap through public Overpass endpoints.
+- Road-network ETA ranking and route geometry through the public OSRM demo service.
+- General, cardiac, pediatric, and maternity metadata filtering.
+- Automatic distance-estimate fallback if public routing is unavailable.
+- Simulated availability changes for demonstrating automatic reranking.
+- Local-only analytics dashboard and CSV export; precise coordinates are not stored.
+- Typed dispatch-agent commands with visible intent, context, action, and validation traces.
+- On-device AI explanation with an immediate verified deterministic fallback.
 
-**Use Lovable**
+## Optional free-tier upgrades
 
-Simply visit the [Lovable Project]((https://quickerold.lovable.app/)) and start prompting.
+The GitHub Pages build needs no secrets. Optional provider keys belong only in a managed server-side environment; they are never bundled into frontend JavaScript.
 
-Changes made via Lovable will be committed automatically to this repo.
+| Secret | Feature | Fallback when missing or limited |
+|---|---|---|
+| `TOMTOM_API_KEY` | Live-traffic ETA for the five fastest road candidates | OSRM road-network ETA |
+| `ORS_API_KEY` | Road-based 5/10/15-minute isochrones | Clearly labelled estimated circles |
 
-**Use your preferred IDE**
+Do not enable billing when the goal is a strict $0 ceiling. Free quotas can run out and public services do not promise uptime; QuickER degrades visibly instead of inventing data or creating a charge. The default GitHub Pages deployment uses the no-key fallbacks and cannot call the optional secret-backed traffic or isochrone functions.
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+## Decision flow
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+1. Discover hospitals within the selected radius using public map data.
+2. Apply the emergency-type metadata filter. If no specialty metadata matches, show general hospitals with a warning.
+3. Pre-rank up to 12 nearby candidates with an OSRM road matrix.
+4. If configured, compare the fastest five again using live traffic.
+5. Rank `accepting`, then `limited`, then `unknown`, and place `diverting` facilities last; sort each group by ETA.
+6. Highlight the best option, disclose its source, and render the road path.
+7. Store only a small, local decision summary for the dashboard and agent explanation.
 
-Follow these steps:
+The open FLAN-T5 Small model is downloaded on demand and runs inside a browser worker. It receives only the non-location decision summary, cannot change the selected hospital, and is rejected if it omits core facts or adds unsupported medical claims. The first model download is about 100 MB; the browser can reuse its cache. If loading or validation fails, QuickER displays the deterministic explanation.
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+The Agent page accepts plain-language routing commands. A deterministic intent router immediately prepares specialty searches, map views, source explanations, availability disclosures, and privacy answers. Eligible decision questions can then be refined by the local model. The visible activity trace shows observable tools and validation steps, not hidden chain-of-thought.
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+## Run locally
 
-# Step 3: Install the necessary dependencies.
-npm i
+Requirements: Node.js 20+ and npm.
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
+```bash
+npm ci
 npm run dev
 ```
 
-**Edit a file directly in GitHub**
+Open `http://localhost:8080`. Without keys, the complete core flow still works using the free fallbacks.
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+Run all checks:
 
-**Use GitHub Codespaces**
+```bash
+npm run check
+```
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+Never commit `.dev.vars`, `.env`, or real keys.
 
-## What technologies are used for this project?
+## Deploy for $0 on GitHub Pages
 
-This project is built with:
+1. In this repository, open **Settings → Pages** and choose **GitHub Actions** as the source.
+2. Merge the feature branch into `main`.
+3. The included **Deploy GitHub Pages** workflow builds the correct repository path and publishes the site.
+4. Open `https://kerbagio.github.io/quickerold/` and verify the road-network and fallback source badges.
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+The static deployment needs no account beyond the existing GitHub repository, no API key, and no billing. The `functions/api` directory remains an optional integration example for an eligible organization that later wants to manage TomTom or openrouteservice secrets after reviewing those providers' terms. `public/_redirects` preserves React routes on compatible function hosts; GitHub Pages receives its own generated SPA fallback.
 
-## How can I deploy this project?
+## Demo sequence
 
-Simply open [Lovable](https://lovable.dev/projects/164ad98f-010e-479f-8065-9ccf9f36578b) and click on Share -> Publish.
+1. Open **Find Hospital**, choose **Use Beirut demo point**, and show that hospitals are ranked by road ETA.
+2. Open the fastest route and point to the ETA source badge.
+3. Open **Dashboard**, select **Run rerouting demo**, and show the diverting hospital move below an accepting alternative.
+4. Open **Emergency Options**, change the specialty filter, and show the 5/10/15-minute accessibility layer.
+5. Open **Agent**, type **Why was this hospital recommended?**, show the immediate verified answer and activity trace, then show the account-free on-device AI badge. Warm the model cache before recording.
+6. End on **About** to explain the $0 architecture and its honest limitations.
 
-## Can I connect a custom domain to my Lovable project?
+## Technology
 
-Yes, you can!
-
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/tips-tricks/custom-domain#step-by-step-guide)
+React, TypeScript, Vite, Tailwind CSS, Shadcn UI, Leaflet, Recharts, OpenStreetMap/Overpass, OSRM, optional TomTom, optional openrouteservice, Transformers.js, FLAN-T5 Small, and Cloudflare Pages Functions.

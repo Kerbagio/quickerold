@@ -1,4 +1,4 @@
-import { Home, Settings, BarChart3, Filter, Bot } from "lucide-react";
+import { Home, Settings, BarChart3, Filter, BrainCircuit } from "lucide-react";
 import { useLocation, Link } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -22,8 +22,8 @@ const BottomNav = () => {
     },
     { 
       path: "/health-assistant", 
-      icon: Bot, 
-      label: "Health",
+      icon: BrainCircuit,
+      label: "Agent",
       isActive: location.pathname === "/health-assistant"
     },
     { 
@@ -40,8 +40,13 @@ const BottomNav = () => {
     },
   ];
 
-  // Hide bottom nav on onboarding and about pages
-  if (location.pathname === "/onboarding" || location.pathname === "/about") {
+  // Keep the first-run experience focused before showing app navigation.
+  if (
+    location.pathname === "/" ||
+    location.pathname === "/get-started" ||
+    location.pathname === "/onboarding" ||
+    location.pathname === "/about"
+  ) {
     return null;
   }
 

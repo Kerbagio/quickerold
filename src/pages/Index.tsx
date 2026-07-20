@@ -1,4 +1,5 @@
 import { useRef, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { AlertCircle, Clock, MapPin, Navigation, Shield } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -13,6 +14,11 @@ import {
   type AvailabilityStatus,
 } from "@/services/availability";
 import type { EtaSource } from "@/services/routing";
+import {
+  emergencyTypeLabel,
+  isEmergencyType,
+  normalizeEmergencyType,
+} from "@/services/emergency";
 
 const sourceLabels: Record<EtaSource, string> = {
   "live-traffic": "Live traffic",
@@ -28,6 +34,10 @@ const availabilityStyles: Record<AvailabilityStatus, string> = {
 };
 
 const Index = () => {
+  const [searchParams] = useSearchParams();
+  const requestedEmergency = searchParams.get("emergencyType");
+  const hasAgentEmergencyRequest = isEmergencyType(requestedEmergency);
+  const agentEmergencyType = normalizeEmergencyType(requestedEmergency);
   const [userLocation, setUserLocation] = useState<{
     lat: number;
     lng: number;
@@ -52,7 +62,9 @@ const Index = () => {
     void fetchHospitals(location.lat, location.lng, {
       radius: 8,
       emergencyType:
-        localStorage.getItem("defaultEmergencyType") ?? "general",
+        hasAgentEmergencyRequest
+          ? agentEmergencyType
+          : localStorage.getItem("defaultEmergencyType") ?? "general",
     });
   };
 
@@ -112,6 +124,12 @@ const Index = () => {
           <p className="mx-auto mb-7 max-w-2xl text-lg text-muted-foreground">
             Share your location to compare road travel times. Live traffic is used only when the free provider is available.
           </p>
+
+          {hasAgentEmergencyRequest ? (
+            <Badge variant="outline" className="mb-5 bg-background/70">
+              Agent task • {emergencyTypeLabel(agentEmergencyType)} search
+            </Badge>
+          ) : null}
 
           {!userLocation && !loading && (
             <div className="flex flex-col items-center justify-center gap-3 sm:flex-row">

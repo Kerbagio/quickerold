@@ -26,7 +26,7 @@ QuickER is a free-first web prototype that ranks nearby hospitals by available r
 
 ## How You Built It — minimum 40 words
 
-I built QuickER with React, TypeScript, Leaflet, OpenStreetMap Overpass, and OSRM for the no-key core. A deterministic decision engine applies specialty metadata, availability tiers, and ETA before drawing the selected route. Transformers.js runs an open FLAN-T5 model on-device to explain the completed decision without receiving precise location data. Output validation and a deterministic fallback keep the routing flow operational if the model or a public service is unavailable.
+I built QuickER with React, TypeScript, Leaflet, OpenStreetMap Overpass, and OSRM for the no-key core. A deterministic decision engine applies specialty metadata, availability tiers, and ETA before drawing the selected route. A typed dispatch agent plans search and map actions while exposing its observable activity trace. Transformers.js runs an open FLAN-T5 model on-device to refine eligible explanations. Output validation and an immediate deterministic fallback keep routing operational if the model or a public service is unavailable.
 
 ## Who Benefits — minimum 20 words
 
@@ -51,7 +51,7 @@ The deployed core uses GitHub Pages, OpenStreetMap data, public OSRM routing, lo
 - “Fastest suitable option by the best available road ETA.”
 - “Real public hospital map records.”
 - “Availability is simulated for this prototype.”
-- “On-device AI explains the structured decision but cannot change it.”
+- “The typed agent plans routing actions, and on-device AI can explain the structured decision but cannot change it.”
 - “The core has a $0 deployment path with no billing.”
 - “Free public services have limits, and every fallback is labelled.”
 

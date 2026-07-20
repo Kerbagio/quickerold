@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { AlertTriangle, Filter, RefreshCw } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -9,9 +10,16 @@ import Map from "@/components/Map";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useHospitals } from "@/hooks/useHospitals";
 import type { IsochroneSource } from "@/services/isochrones";
+import {
+  normalizeEmergencyType,
+  type EmergencyType,
+} from "@/services/emergency";
 
 const Options = () => {
-  const [selectedType, setSelectedType] = useState("general");
+  const [searchParams] = useSearchParams();
+  const [selectedType, setSelectedType] = useState(() =>
+    normalizeEmergencyType(searchParams.get("emergencyType")),
+  );
   const [radius, setRadius] = useState([8]);
   const [userLocation, setUserLocation] = useState<{
     lat: number;
@@ -28,7 +36,7 @@ const Options = () => {
     specialtyFallback,
   } = useHospitals();
 
-  const emergencyTypes = [
+  const emergencyTypes: Array<{ id: EmergencyType; label: string }> = [
     { id: "general", label: t("emergency.general") },
     { id: "maternity", label: t("emergency.maternity") },
     { id: "pediatric", label: t("emergency.pediatric") },

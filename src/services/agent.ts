@@ -34,20 +34,25 @@ export function isSafeModelExplanation(
   const normalized = text.trim().toLocaleLowerCase();
   const hospitalName = decision.recommendedHospital.trim().toLocaleLowerCase();
   const unsafeClaim =
-    /\b(diagnos\w*|treat\w*|medicat\w*|guarantee\w*|cure\w*|definitely safe)\b/i;
+    /\b(diagnos\w*|treat\w*|medicat\w*|guarantee\w*|cure\w*|definitely safe|you have|safe to wait|delay care)\b/i;
+  const wordCount = normalized.split(/\s+/).filter(Boolean).length;
 
   return (
     normalized.length >= 20 &&
     normalized.length <= 700 &&
+    wordCount <= 100 &&
     normalized.includes(hospitalName) &&
     normalized.includes(String(decision.etaMinutes)) &&
-    !unsafeClaim.test(normalized)
+    !unsafeClaim.test(normalized) &&
+    !normalized.includes("http://") &&
+    !normalized.includes("https://")
   );
 }
 
 export async function explainDecision(
   decision: DecisionRecord,
   onProgress?: (progress: AgentProgress) => void,
+  question?: string,
 ): Promise<AgentExplanation> {
   return new Promise((resolve) => {
     const fallback = () => resolve(deterministicExplanation(decision));
@@ -97,7 +102,10 @@ export async function explainDecision(
         worker.terminate();
         fallback();
       };
-      worker.postMessage({ decision });
+      worker.postMessage({
+        decision,
+        question: question?.trim().slice(0, 300),
+      });
     } catch {
       fallback();
     }

@@ -15,8 +15,11 @@ import {
   sortForDispatch,
 } from "@/services/availability";
 import { recordDecision } from "@/services/analytics";
+import {
+  normalizeEmergencyType,
+  type EmergencyType,
+} from "@/services/emergency";
 
-export type EmergencyType = "general" | "cardiac" | "pediatric" | "maternity";
 export type SpecialtyMatch = "tagged" | "name-match" | "unknown";
 
 export interface Hospital {
@@ -66,12 +69,6 @@ const emergencyTerms: Record<Exclude<EmergencyType, "general">, string[]> = {
   pediatric: ["paediatric", "pediatric", "children", "child", "kids"],
   maternity: ["maternity", "obstetric", "gynaec", "gynec", "women", "birth"],
 };
-
-function normalizeEmergencyType(value: string): EmergencyType {
-  return ["general", "cardiac", "pediatric", "maternity"].includes(value)
-    ? (value as EmergencyType)
-    : "general";
-}
 
 function getSpecialtyMatch(
   hospital: OSMHospital,

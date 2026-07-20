@@ -45,11 +45,11 @@ Use this as the recording plan for a two-minute landscape demo. The official [su
 
 **Say:** “Emergency Options filters by available specialty metadata and visualizes five, ten, and fifteen-minute reach. The free static build labels these as estimated areas; an authorized road-isochrone integration can replace them later.”
 
-### 1:30–1:50 — AI visibly working
+### 1:30–1:50 — Typed agent visibly working
 
-**Do:** Open **Agent** and click **Run free on-device AI**. Keep the progress indicator and final **On-device AI** badge visible.
+**Do:** Open **Agent**, type **Why was this hospital recommended?**, and press Enter. Keep the immediate verified answer, Agent Activity trace, model progress, and final **On-device AI** badge visible.
 
-**Say:** “The explanation layer uses an open FLAN-T5 model through Transformers.js. It runs inside the browser, needs no key or paid API, and receives no precise location. It can explain a completed decision but cannot choose the hospital. QuickER rejects output that drops required facts or adds unsupported medical claims.”
+**Say:** “The typed dispatch agent classifies my routing request, loads only the local decision summary, and returns a verified answer immediately. An open FLAN-T5 model then refines eligible explanations inside the browser without a key or paid API. The visible trace shows its actions and validation, and QuickER rejects output that drops required facts or adds unsupported medical claims.”
 
 ### 1:50–2:00 — Honest $0 close
 
@@ -63,7 +63,7 @@ Use this as the recording plan for a two-minute landscape demo. The official [su
 2. **Route:** highlighted road route with the alternatives list visible.
 3. **Dashboard:** rerouting scenario after the first facility becomes diverting.
 4. **Emergency Options:** specialty filter and 5/10/15-minute accessibility layers, including the estimate label.
-5. **Agent:** completed explanation with the **On-device AI** badge visible.
+5. **Agent:** typed request, completed explanation, activity trace, and **On-device AI** badge visible.
 
 Do not submit AI-generated interface images, stock images, design concepts, or screenshots of code without the working app. Crop only for privacy or empty browser chrome; do not edit the interface result.
 

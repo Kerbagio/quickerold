@@ -13,7 +13,8 @@ QuickER ranks nearby hospitals by the fastest suitable travel option—not strai
 - Automatic distance-estimate fallback if public routing is unavailable.
 - Simulated availability changes for demonstrating automatic reranking.
 - Local-only analytics dashboard and CSV export; precise coordinates are not stored.
-- On-device AI explanation with a verified deterministic fallback.
+- Typed dispatch-agent commands with visible intent, context, action, and validation traces.
+- On-device AI explanation with an immediate verified deterministic fallback.
 
 ## Optional free-tier upgrades
 
@@ -37,6 +38,8 @@ Do not enable billing when the goal is a strict $0 ceiling. Free quotas can run 
 7. Store only a small, local decision summary for the dashboard and agent explanation.
 
 The open FLAN-T5 Small model is downloaded on demand and runs inside a browser worker. It receives only the non-location decision summary, cannot change the selected hospital, and is rejected if it omits core facts or adds unsupported medical claims. The first model download is about 100 MB; the browser can reuse its cache. If loading or validation fails, QuickER displays the deterministic explanation.
+
+The Agent page accepts plain-language routing commands. A deterministic intent router immediately prepares specialty searches, map views, source explanations, availability disclosures, and privacy answers. Eligible decision questions can then be refined by the local model. The visible activity trace shows observable tools and validation steps, not hidden chain-of-thought.
 
 ## Run locally
 
@@ -72,7 +75,7 @@ The static deployment needs no account beyond the existing GitHub repository, no
 2. Open the fastest route and point to the ETA source badge.
 3. Open **Dashboard**, select **Run rerouting demo**, and show the diverting hospital move below an accepting alternative.
 4. Open **Emergency Options**, change the specialty filter, and show the 5/10/15-minute accessibility layer.
-5. Open **Agent**, run the account-free on-device model, and show its AI source badge. Warm the model cache before recording.
+5. Open **Agent**, type **Why was this hospital recommended?**, show the immediate verified answer and activity trace, then show the account-free on-device AI badge. Warm the model cache before recording.
 6. End on **About** to explain the $0 architecture and its honest limitations.
 
 ## Technology

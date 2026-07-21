@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import {
   AlertTriangle,
   ArrowRight,
@@ -16,6 +16,7 @@ import { Card } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import Layout from "@/components/Layout";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { clearPageMemory } from "@/hooks/usePageMemory";
 import { assessTriage, type TriageResult } from "@/services/triage";
 import { emergencyTypeLabel } from "@/services/emergency";
 
@@ -33,6 +34,7 @@ const urgencyStyles: Record<TriageResult["urgency"], string> = {
 };
 
 const Triage = () => {
+  const navigate = useNavigate();
   const { language } = useLanguage();
   const [input, setInput] = useState("");
   const [result, setResult] = useState<TriageResult | null>(null);
@@ -49,6 +51,14 @@ const Triage = () => {
   const reset = () => {
     setInput("");
     setResult(null);
+  };
+
+  const prepareHospitalSearch = () => {
+    if (!result) return;
+    localStorage.setItem("defaultEmergencyType", result.emergencyType);
+    localStorage.setItem("searchRadius", String(result.radiusKm));
+    clearPageMemory("home.");
+    navigate("/home");
   };
 
   return (
@@ -200,11 +210,14 @@ const Triage = () => {
                     <p className="mt-1 text-sm leading-relaxed text-muted-foreground">{result.nextStep}</p>
                   </div>
 
-                  <Button asChild className="w-full" size="lg">
-                    <Link to={`/home?emergencyType=${result.emergencyType}&radius=${result.radiusKm}`}>
-                      Find suitable hospitals
-                      <ArrowRight className="ml-2 h-5 w-5" />
-                    </Link>
+                  <Button
+                    type="button"
+                    className="w-full"
+                    size="lg"
+                    onClick={prepareHospitalSearch}
+                  >
+                    Find suitable hospitals
+                    <ArrowRight className="ml-2 h-5 w-5" />
                   </Button>
                 </div>
               ) : (

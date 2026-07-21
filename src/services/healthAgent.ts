@@ -61,13 +61,13 @@ const yesPattern =
 const noPattern =
   /^(no|n|nope|not|they are not|he is not|she is not|i am not|لا|كلا|non)\b/i;
 const unknownPattern =
-  /^(not sure|unsure|unknown|i don'?t know|do not know|مش عارف|ما بعرف|لا أعرف|je ne sais pas)\b/i;
+  /^(not sure|unsure|unknown|i don'?t know|do not know|i am not sure|مش عارف|ما بعرف|لا أعرف|je ne sais pas)\b/i;
 
 function parseStructuredAnswer(text: string): TriageAnswer | null {
   const normalized = text.trim();
-  if (yesPattern.test(normalized)) return "yes";
-  if (noPattern.test(normalized)) return "no";
   if (unknownPattern.test(normalized)) return "unknown";
+  if (noPattern.test(normalized)) return "no";
+  if (yesPattern.test(normalized)) return "yes";
   return null;
 }
 
@@ -84,7 +84,8 @@ function getNextQuestion(
   symptomNarrative: string,
   turnCount: number,
 ): AgentQuestionKey | null {
-  if (triage.requiresImmediateAction || triage.urgency === "emergency") {
+  if (triage.urgency === "emergency") return null;
+  if (triage.requiresImmediateAction && triage.urgency !== "needs-more-info") {
     return null;
   }
 
@@ -103,25 +104,16 @@ function getNextQuestion(
   return null;
 }
 
-function buildFallbackReply(
-  triage: TriageResult,
-  nextQuestion: AgentQuestionKey | null,
-): string {
-  const question = nextQuestion ? ` ${questionText[nextQuestion]}` : "";
-
+function buildFallbackReply(triage: TriageResult): string {
   if (triage.requiresImmediateAction || triage.urgency === "emergency") {
     return `${triage.summary} ${triage.nextStep}`;
   }
 
   if (triage.urgency === "urgent") {
-    return `${triage.summary} ${triage.nextStep}${question}`;
+    return `${triage.summary} ${triage.nextStep}`;
   }
 
-  if (triage.urgency === "soon") {
-    return `${triage.summary}${question}`;
-  }
-
-  return `${triage.summary}${question}`;
+  return triage.summary;
 }
 
 export function createHealthAgentState(): HealthAgentState {
@@ -204,7 +196,7 @@ export function planHealthAgentTurn(
     detail: nextQuestionKey
       ? `Selected one focused follow-up: ${questionText[nextQuestionKey]}`
       : "No additional question is required before presenting the current action.",
-    status: nextQuestionKey ? "complete" : "complete",
+    status: "complete",
   });
 
   const nextState: HealthAgentState = {
@@ -227,7 +219,7 @@ export function planHealthAgentTurn(
           ),
         }
       : null,
-    fallbackReply: buildFallbackReply(triage, nextQuestionKey),
+    fallbackReply: buildFallbackReply(triage),
     toolSteps,
     canPrepareHospitalSearch:
       triage.urgency !== "needs-more-info" || triage.requiresImmediateAction,

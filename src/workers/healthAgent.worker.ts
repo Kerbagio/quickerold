@@ -75,18 +75,16 @@ function progressMessage(value: unknown): {
 
 async function loadGenerator(): Promise<TextGenerator> {
   const supportsWebGpu = "gpu" in navigator;
-  const modelOptions: Record<string, unknown> = {
-    dtype: supportsWebGpu ? "q4" : "q8",
-    progress_callback: (value: unknown) => {
-      self.postMessage({ type: "progress", ...progressMessage(value) });
-    },
-  };
-  if (supportsWebGpu) modelOptions.device = "webgpu";
-
   const generator = await pipeline(
     "text-generation",
     MODEL,
-    modelOptions,
+    {
+      dtype: supportsWebGpu ? "q4" : "q8",
+      ...(supportsWebGpu ? { device: "webgpu" as const } : {}),
+      progress_callback: (value: unknown) => {
+        self.postMessage({ type: "progress", ...progressMessage(value) });
+      },
+    },
   );
   return generator as unknown as TextGenerator;
 }
@@ -100,8 +98,8 @@ function extractText(output: GenerationRecord | GenerationRecord[]): string {
   const record = Array.isArray(output) ? output[0] : output;
   const generated = record?.generated_text;
   if (typeof generated === "string") return generated.trim();
-  if (Array.isArray(generated)) {
-    return generated.at(-1)?.content?.trim() ?? "";
+  if (Array.isArray(generated) && generated.length) {
+    return generated[generated.length - 1]?.content?.trim() ?? "";
   }
   return "";
 }

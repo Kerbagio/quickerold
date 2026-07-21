@@ -158,6 +158,46 @@ function addAskedQuestion(
   return questions.includes(question) ? questions : [...questions, question];
 }
 
+function answerAcknowledgement(
+  key: keyof TriageContext,
+  answer: TriageAnswer,
+): string {
+  if (answer === "unknown") {
+    const unknownReplies: Record<keyof TriageContext, string> = {
+      conscious:
+        "No problem — I’ll leave consciousness unconfirmed and continue to the next safety check.",
+      breathingNormally:
+        "Okay — breathing status is still uncertain, so I’ll continue with the next check.",
+      severeBleeding:
+        "Understood — I’ll leave the bleeding status unknown and move to the next point.",
+      worseningRapidly:
+        "That’s okay — I’ll leave the change in symptoms unconfirmed and continue.",
+    };
+    return unknownReplies[key];
+  }
+
+  const confirmedReplies: Record<keyof TriageContext, Partial<Record<TriageAnswer, string>>> = {
+    conscious: {
+      yes: "Got it — the person is conscious and responding.",
+      no: "I’ve recorded that the person is not responding normally.",
+    },
+    breathingNormally: {
+      yes: "Got it — the person is breathing normally and can speak.",
+      no: "I’ve recorded that the person is not breathing normally.",
+    },
+    severeBleeding: {
+      yes: "I’ve recorded severe or uncontrolled bleeding.",
+      no: "Got it — no severe or uncontrolled bleeding was reported.",
+    },
+    worseningRapidly: {
+      yes: "I’ve recorded that the symptoms are worsening quickly.",
+      no: "Got it — the symptoms are not worsening quickly.",
+    },
+  };
+
+  return confirmedReplies[key][answer] ?? "Got it — I’ve recorded that answer.";
+}
+
 function getNextQuestion(
   context: TriageContext,
   triage: TriageResult,
@@ -335,10 +375,7 @@ export function planHealthAgentTurn(
 
       if (answer) {
         nextContext[contextKey] = answer;
-        acknowledgement =
-          answer === "unknown"
-            ? "That’s okay — I’ll leave that answer as unknown and move to the next safety check."
-            : "Got it — I’ve recorded that answer.";
+        acknowledgement = answerAcknowledgement(contextKey, answer);
         toolSteps.push({
           id: `context-${contextKey}`,
           tool: "triage.update_context",
@@ -359,7 +396,10 @@ export function planHealthAgentTurn(
       }
     } else {
       symptomNarrative = appendNarrative(symptomNarrative, cleaned);
-      acknowledgement = "Thanks — that adds useful context to the assessment.";
+      acknowledgement =
+        pendingQuestion === "symptomDetails"
+          ? "Thanks — that gives me a clearer picture of what is happening."
+          : "Thanks — I’ve added the timing and change in symptoms to the assessment.";
       toolSteps.push({
         id: `context-${pendingQuestion}`,
         tool: "triage.update_context",

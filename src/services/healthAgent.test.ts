@@ -11,17 +11,18 @@ describe("planHealthAgentTurn", () => {
     expect(plan.nextQuestion).toBeNull();
   });
 
-  it("asks one critical question at a time and keeps conversation state", () => {
+  it("shows each focused question only in the question card", () => {
     const first = planHealthAgentTurn("I have a mild headache.");
 
     expect(first.nextQuestion?.key).toBe("conscious");
     expect(first.state.symptomNarrative).toContain("mild headache");
-    expect(first.reply).toContain("conscious");
+    expect(first.reply).not.toContain(first.nextQuestion?.text);
 
     const second = planHealthAgentTurn("Yes", first.state);
 
     expect(second.state.context.conscious).toBe("yes");
     expect(second.nextQuestion?.key).toBe("breathingNormally");
+    expect(second.reply).not.toContain(second.nextQuestion?.text);
     expect(second.state.symptomNarrative).toBe(first.state.symptomNarrative);
   });
 
@@ -43,12 +44,31 @@ describe("planHealthAgentTurn", () => {
     expect(second.nextQuestion?.key).toBe("breathingNormally");
   });
 
-  it("does not misread not-sure as a negative answer", () => {
+  it("moves forward after not-sure instead of repeating the same question", () => {
     const first = planHealthAgentTurn("I feel unwell.");
-    const second = planHealthAgentTurn("I am not sure", first.state);
+    const second = planHealthAgentTurn("Not sure", first.state);
 
     expect(second.state.context.conscious).toBe("unknown");
-    expect(second.nextQuestion?.key).toBe("conscious");
+    expect(second.state.askedQuestions).toContain("conscious");
+    expect(second.nextQuestion?.key).toBe("breathingNormally");
+    expect(second.reply).not.toContain("breathing normally");
+  });
+
+  it("never repeats critical questions when every answer is not sure", () => {
+    const first = planHealthAgentTurn("I feel unwell.");
+    const second = planHealthAgentTurn("Not sure", first.state);
+    const third = planHealthAgentTurn("Not sure", second.state);
+    const fourth = planHealthAgentTurn("Not sure", third.state);
+    const fifth = planHealthAgentTurn("Not sure", fourth.state);
+
+    expect(first.nextQuestion?.key).toBe("conscious");
+    expect(second.nextQuestion?.key).toBe("breathingNormally");
+    expect(third.nextQuestion?.key).toBe("severeBleeding");
+    expect(fourth.nextQuestion?.key).toBe("worseningRapidly");
+    expect(fifth.nextQuestion?.key).toBe("symptomDetails");
+    expect(new Set(fifth.state.askedQuestions).size).toBe(
+      fifth.state.askedQuestions.length,
+    );
   });
 
   it("asks for critical clarification when wording is ambiguous", () => {

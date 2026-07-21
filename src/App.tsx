@@ -7,6 +7,7 @@ import { lazy, Suspense } from "react";
 import OfflineNotice from "./components/OfflineNotice";
 import ScrollToTop from "./components/ScrollToTop";
 import RouteLoading from "./components/RouteLoading";
+import RuntimeTranslator from "./components/RuntimeTranslator";
 
 const Index = lazy(() => import("./pages/Index"));
 const Options = lazy(() => import("./pages/Options"));
@@ -33,6 +34,7 @@ const App = () => (
         <Toaster />
         <OfflineNotice />
         <BrowserRouter basename={import.meta.env.BASE_URL}>
+          <RuntimeTranslator />
           <ScrollToTop />
           <Suspense fallback={<RouteLoading />}>
             <Routes>

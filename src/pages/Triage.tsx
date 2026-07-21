@@ -11,16 +11,11 @@ import {
   ArrowRight,
   Bot,
   BrainCircuit,
-  CheckCircle2,
-  CircleAlert,
-  Clock3,
   HeartPulse,
   RotateCcw,
   Send,
   ShieldCheck,
-  Sparkles,
   UserRound,
-  Wrench,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -35,10 +30,6 @@ import {
   type HealthAgentPlan,
   type HealthAgentState,
 } from "@/services/healthAgent";
-import {
-  generateHealthAgentReply,
-  type AgentModelProgress,
-} from "@/services/healthAgentRuntime";
 import { emergencyTypeLabel } from "@/services/emergency";
 import type { TriageResult } from "@/services/triage";
 
@@ -46,22 +37,20 @@ interface AgentMessage {
   id: string;
   role: "user" | "assistant";
   content: string;
-  mode?: "on-device-ai" | "safety-fallback";
-  model?: string;
 }
 
 const initialMessage: AgentMessage = {
   id: "welcome",
   role: "assistant",
   content:
-    "Tell me what is happening in your own words. I will check immediate warning signs, ask one focused question at a time, and prepare a suitable hospital search when there is enough information.",
+    "Hi — tell me what is happening in your own words. I will ask one focused question at a time and help prepare the right hospital search.",
 };
 
 const examples = [
+  "Hi",
   "My father has chest pressure and is struggling to breathe.",
   "My child has a high fever and keeps vomiting.",
   "I am pregnant and having severe abdominal pain.",
-  "I am dead.",
 ];
 
 const urgencyStyles: Record<TriageResult["urgency"], string> = {
@@ -87,89 +76,56 @@ const Triage = () => {
     createHealthAgentState(),
   );
   const [plan, setPlan] = useState<HealthAgentPlan | null>(null);
-  const [isThinking, setIsThinking] = useState(false);
-  const [progress, setProgress] = useState<AgentModelProgress | null>(null);
   const messageEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     messageEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, plan, progress]);
+  }, [messages, plan]);
 
   const reset = () => {
-    if (isThinking) return;
     setInput("");
     setMessages([initialMessage]);
     setAgentState(createHealthAgentState());
     setPlan(null);
-    setProgress(null);
   };
 
-  const submitPrompt = async (rawPrompt = input) => {
+  const submitPrompt = (rawPrompt = input) => {
     const prompt = rawPrompt.trim().slice(0, 1200);
-    if (!prompt || isThinking) return;
+    if (!prompt) return;
 
     const nextPlan = planHealthAgentTurn(prompt, agentState);
-    const requestId = `${Date.now()}-user`;
-    const responseId = `${Date.now()}-assistant`;
+    const now = Date.now();
     const userMessage: AgentMessage = {
-      id: requestId,
+      id: `${now}-user`,
       role: "user",
       content: prompt,
     };
-    const immediateReply: AgentMessage = {
-      id: responseId,
+    const assistantMessage: AgentMessage = {
+      id: `${now}-assistant`,
       role: "assistant",
-      content: nextPlan.fallbackReply,
-      mode: "safety-fallback",
+      content: nextPlan.reply,
     };
-    const modelConversation = [...messages, userMessage].map((message) => ({
-      role: message.role,
-      content: message.content,
-    }));
 
     setInput("");
     setAgentState(nextPlan.state);
     setPlan(nextPlan);
-    setMessages((current) => [...current, userMessage, immediateReply]);
-    setIsThinking(true);
-    setProgress({ label: "Starting the private on-device agent…" });
-
-    const generated = await generateHealthAgentReply(
-      modelConversation,
-      nextPlan,
-      setProgress,
-    );
-
-    setMessages((current) =>
-      current.map((message) =>
-        message.id === responseId
-          ? {
-              ...message,
-              content: generated.text,
-              mode: generated.mode,
-              model: generated.model,
-            }
-          : message,
-      ),
-    );
-    setProgress(null);
-    setIsThinking(false);
+    setMessages((current) => [...current, userMessage, assistantMessage]);
   };
 
   const handleSubmit = (event: FormEvent) => {
     event.preventDefault();
-    void submitPrompt();
+    submitPrompt();
   };
 
   const handleKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
     if (event.key === "Enter" && !event.shiftKey) {
       event.preventDefault();
-      void submitPrompt();
+      submitPrompt();
     }
   };
 
   const prepareHospitalSearch = () => {
-    const result = plan?.triage;
+    const result = plan?.triage ?? agentState.triage;
     if (!result) return;
     localStorage.setItem("defaultEmergencyType", result.emergencyType);
     localStorage.setItem("searchRadius", String(result.radiusKm));
@@ -177,7 +133,12 @@ const Triage = () => {
     navigate("/home");
   };
 
-  const result = plan?.triage ?? null;
+  const result = plan?.triage ?? agentState.triage;
+  const canPrepareHospitalSearch = Boolean(
+    result &&
+      (plan?.canPrepareHospitalSearch ??
+        (result.urgency !== "needs-more-info" || result.requiresImmediateAction)),
+  );
 
   return (
     <Layout>
@@ -191,18 +152,17 @@ const Triage = () => {
             <div>
               <div className="mb-4 flex flex-wrap gap-2">
                 <Badge className="bg-success text-success-foreground">
-                  $0 • no API key
+                  $0 • ready instantly
                 </Badge>
-                <Badge variant="outline">On-device Qwen agent</Badge>
-                <Badge variant="outline">Validated tool calls</Badge>
+                <Badge variant="outline">No download</Badge>
+                <Badge variant="outline">No API key</Badge>
               </div>
               <h1 className="text-3xl font-bold sm:text-4xl">
-                QuickER Health Agent
+                QuickER Triage Assistant
               </h1>
               <p className="mt-3 max-w-2xl text-lg text-muted-foreground">
-                A real conversational agent with temporary memory, focused
-                follow-up questions, a deterministic safety tool, and a direct
-                handoff to hospital search.
+                A guided conversation that remembers your answers, checks urgent
+                warning signs, and prepares the appropriate hospital search.
               </p>
             </div>
             <div className="hidden h-24 w-24 items-center justify-center rounded-3xl bg-primary/10 lg:flex">
@@ -212,32 +172,26 @@ const Triage = () => {
         </Card>
 
         <div className="rounded-xl border border-warning/40 bg-warning/10 p-4 text-sm">
-          <strong>Safety notice:</strong> The agent cannot diagnose or replace a
-          clinician. When the safety tool detects immediate danger, contact local
-          emergency services without waiting for the model or hospital search.
+          <strong>Safety notice:</strong> This assistant does not diagnose or
+          replace a clinician. For immediate danger or life-threatening symptoms,
+          contact local emergency services now.
         </div>
 
-        <div className="grid gap-6 lg:grid-cols-[minmax(0,1.5fr)_minmax(310px,0.75fr)]">
-          <Card className="flex min-h-[680px] flex-col overflow-hidden">
+        <div className="grid gap-6 lg:grid-cols-[minmax(0,1.5fr)_minmax(300px,0.7fr)]">
+          <Card className="flex min-h-[650px] flex-col overflow-hidden">
             <div className="flex items-center justify-between border-b px-4 py-4 sm:px-5">
               <div className="flex items-center gap-3">
                 <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10">
                   <BrainCircuit className="h-5 w-5 text-primary" />
                 </div>
                 <div>
-                  <h2 className="font-semibold">Agent conversation</h2>
+                  <h2 className="font-semibold">Conversation</h2>
                   <p className="text-xs text-muted-foreground">
-                    Safety tools first • local model writes the response
+                    Instant replies • temporary in-tab memory
                   </p>
                 </div>
               </div>
-              <Button
-                type="button"
-                size="sm"
-                variant="ghost"
-                onClick={reset}
-                disabled={isThinking}
-              >
+              <Button type="button" size="sm" variant="ghost" onClick={reset}>
                 <RotateCcw className="mr-2 h-4 w-4" /> Reset
               </Button>
             </div>
@@ -265,22 +219,6 @@ const Triage = () => {
                     <p className="whitespace-pre-wrap leading-relaxed">
                       {message.content}
                     </p>
-                    {message.role === "assistant" && message.mode ? (
-                      <div className="mt-3 flex flex-wrap gap-2">
-                        {message.mode === "on-device-ai" ? (
-                          <Badge variant="secondary">
-                            <Sparkles className="mr-1 h-3 w-3" /> On-device AI
-                          </Badge>
-                        ) : (
-                          <Badge variant="secondary">
-                            <ShieldCheck className="mr-1 h-3 w-3" /> Safety fallback
-                          </Badge>
-                        )}
-                        {message.model ? (
-                          <Badge variant="outline">{message.model}</Badge>
-                        ) : null}
-                      </div>
-                    ) : null}
                   </div>
                   {message.role === "user" ? (
                     <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-muted">
@@ -291,9 +229,9 @@ const Triage = () => {
               ))}
 
               {plan?.nextQuestion ? (
-                <div className="ml-11 rounded-2xl border border-primary/30 bg-primary/5 p-4">
+                <div className="ml-0 rounded-2xl border border-primary/30 bg-primary/5 p-4 sm:ml-11">
                   <p className="text-xs font-semibold uppercase tracking-wide text-primary">
-                    Agent needs one answer
+                    One quick question
                   </p>
                   <p className="mt-1 font-medium">{plan.nextQuestion.text}</p>
                   {plan.nextQuestion.expectsStructuredAnswer ? (
@@ -308,8 +246,7 @@ const Triage = () => {
                           type="button"
                           size="sm"
                           variant="outline"
-                          disabled={isThinking}
-                          onClick={() => void submitPrompt(option.value)}
+                          onClick={() => submitPrompt(option.value)}
                         >
                           {option.label}
                         </Button>
@@ -333,34 +270,12 @@ const Triage = () => {
                     <button
                       key={example}
                       type="button"
-                      disabled={isThinking}
-                      onClick={() => void submitPrompt(example)}
-                      className="rounded-full border bg-background px-3 py-1.5 text-left text-xs text-muted-foreground transition-colors hover:border-primary hover:text-foreground disabled:opacity-50"
+                      onClick={() => submitPrompt(example)}
+                      className="rounded-full border bg-background px-3 py-1.5 text-left text-xs text-muted-foreground transition-colors hover:border-primary hover:text-foreground"
                     >
                       {example}
                     </button>
                   ))}
-                </div>
-              ) : null}
-
-              {progress ? (
-                <div className="mb-3 space-y-2" aria-live="polite">
-                  <div className="h-2 overflow-hidden rounded-full bg-muted">
-                    <div
-                      className={`h-full rounded-full bg-primary transition-all ${
-                        progress.percent === undefined ? "w-1/3 animate-pulse" : ""
-                      }`}
-                      style={
-                        progress.percent === undefined
-                          ? undefined
-                          : { width: `${progress.percent}%` }
-                      }
-                    />
-                  </div>
-                  <p className="flex items-center text-xs text-muted-foreground">
-                    <Sparkles className="mr-2 h-3.5 w-3.5 animate-pulse" />
-                    {progress.label}
-                  </p>
                 </div>
               ) : null}
 
@@ -369,10 +284,9 @@ const Triage = () => {
                   value={input}
                   onChange={(event) => setInput(event.target.value.slice(0, 1200))}
                   onKeyDown={handleKeyDown}
-                  placeholder="Describe symptoms or answer the agent's question…"
+                  placeholder="Describe symptoms or answer the question…"
                   className="min-h-[92px] resize-none rounded-2xl pb-10 pr-14"
-                  disabled={isThinking}
-                  aria-label="Message the QuickER health agent"
+                  aria-label="Message the QuickER triage assistant"
                 />
                 <span className="absolute bottom-3 left-4 text-[11px] text-muted-foreground">
                   {input.length}/1200 • Enter to send
@@ -381,19 +295,15 @@ const Triage = () => {
                   type="submit"
                   size="icon"
                   className="absolute bottom-3 right-3 rounded-xl"
-                  disabled={!input.trim() || isThinking}
+                  disabled={!input.trim()}
                   aria-label="Send message"
                 >
-                  {isThinking ? (
-                    <Clock3 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <Send className="h-4 w-4" />
-                  )}
+                  <Send className="h-4 w-4" />
                 </Button>
               </form>
               <p className="mt-2 text-center text-[11px] text-muted-foreground">
-                Messages stay in temporary tab memory. Model inference runs in
-                this browser after a one-time model download.
+                No model is downloaded. Messages remain only in this tab and are
+                cleared when you reset or reload.
               </p>
             </div>
           </Card>
@@ -402,7 +312,7 @@ const Triage = () => {
             <Card className="p-5">
               <div className="mb-4 flex items-center gap-2">
                 <ShieldCheck className="h-5 w-5 text-primary" />
-                <h2 className="font-semibold">Live triage state</h2>
+                <h2 className="font-semibold">Current assessment</h2>
               </div>
 
               {result ? (
@@ -418,8 +328,8 @@ const Triage = () => {
 
                   {result.requiresImmediateAction ? (
                     <div className="rounded-xl border border-destructive/40 bg-destructive/10 p-4 text-sm text-destructive">
-                      <strong>Immediate action:</strong> do not wait for the model
-                      or this app before contacting emergency services.
+                      <strong>Immediate action:</strong> do not wait for this app
+                      before contacting emergency services.
                     </div>
                   ) : null}
 
@@ -446,7 +356,7 @@ const Triage = () => {
 
                   <div>
                     <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                      Hospital-search tool input
+                      Hospital search
                     </p>
                     <div className="mt-2 flex flex-wrap gap-2">
                       <Badge variant="secondary">
@@ -459,7 +369,7 @@ const Triage = () => {
                   {result.matchedSignals.length ? (
                     <div>
                       <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                        Signals used by the safety tool
+                        Warning signs detected
                       </p>
                       <div className="mt-2 flex flex-wrap gap-2">
                         {result.matchedSignals.map((signal) => (
@@ -471,100 +381,42 @@ const Triage = () => {
                     </div>
                   ) : null}
 
-                  <Button
-                    type="button"
-                    size="lg"
-                    className="w-full"
-                    disabled={!plan?.canPrepareHospitalSearch}
-                    onClick={prepareHospitalSearch}
-                  >
-                    {result.requiresImmediateAction
-                      ? "Find nearby emergency hospitals"
-                      : "Prepare hospital search"}
-                    <ArrowRight className="ml-2 h-5 w-5" />
-                  </Button>
+                  {canPrepareHospitalSearch ? (
+                    <Button
+                      type="button"
+                      size="lg"
+                      className="w-full"
+                      onClick={prepareHospitalSearch}
+                    >
+                      Find suitable hospitals
+                      <ArrowRight className="ml-2 h-5 w-5" />
+                    </Button>
+                  ) : (
+                    <p className="rounded-xl border border-dashed p-3 text-sm text-muted-foreground">
+                      Answer the next question before hospital filtering is enabled.
+                    </p>
+                  )}
                 </div>
               ) : (
-                <div className="rounded-xl border border-dashed p-5 text-center text-sm text-muted-foreground">
-                  The validated urgency, risk, confidence, specialty, and radius
-                  will appear after the first message.
+                <div className="rounded-xl border border-dashed p-5 text-center">
+                  <HeartPulse className="mx-auto h-8 w-8 text-muted-foreground" />
+                  <p className="mt-3 font-medium">No assessment yet</p>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    Say hello or describe what is happening to begin.
+                  </p>
                 </div>
               )}
-            </Card>
-
-            <Card className="p-5">
-              <div className="mb-4 flex items-center gap-2">
-                <Wrench className="h-5 w-5 text-primary" />
-                <h2 className="font-semibold">Agent tool activity</h2>
-              </div>
-              {plan?.toolSteps.length ? (
-                <div className="space-y-4">
-                  {plan.toolSteps.map((step) => (
-                    <div key={step.id} className="flex gap-3">
-                      <div
-                        className={`mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full ${
-                          step.status === "warning"
-                            ? "bg-warning/15 text-warning"
-                            : "bg-success/15 text-success"
-                        }`}
-                      >
-                        {step.status === "warning" ? (
-                          <CircleAlert className="h-3.5 w-3.5" />
-                        ) : (
-                          <CheckCircle2 className="h-3.5 w-3.5" />
-                        )}
-                      </div>
-                      <div>
-                        <p className="font-mono text-xs font-semibold">
-                          {step.tool}
-                        </p>
-                        <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">
-                          {step.detail}
-                        </p>
-                      </div>
-                    </div>
-                  ))}
-                  <div className="flex gap-3">
-                    <div className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary/15 text-primary">
-                      {isThinking ? (
-                        <Clock3 className="h-3.5 w-3.5 animate-spin" />
-                      ) : (
-                        <Sparkles className="h-3.5 w-3.5" />
-                      )}
-                    </div>
-                    <div>
-                      <p className="font-mono text-xs font-semibold">
-                        local_model.compose
-                      </p>
-                      <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">
-                        {isThinking
-                          ? "The on-device model is composing a natural response from the conversation and verified tool result."
-                          : "The generated response was validated before display; unsafe output falls back to the safety-engine wording."}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              ) : (
-                <div className="rounded-xl border border-dashed p-4 text-center text-sm text-muted-foreground">
-                  Send a message to see the agent execute its tools.
-                </div>
-              )}
-              <p className="mt-4 border-t pt-3 text-[11px] text-muted-foreground">
-                This shows observable tool actions and validation—not hidden
-                model reasoning.
-              </p>
             </Card>
 
             <Card className="border-primary/20 bg-primary/5 p-5">
               <div className="flex gap-3">
                 <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
                 <div>
-                  <h2 className="font-semibold">Why this is a real agent</h2>
+                  <h2 className="font-semibold">What this version is</h2>
                   <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-                    The response is generated from the live conversation. The
-                    agent updates structured context, calls the triage tool,
-                    chooses the next question, validates the model output, and
-                    passes verified parameters to hospital search.
+                    This is an instant guided triage assistant, not a general-purpose
+                    LLM. It adapts questions from the conversation and uses a safety
+                    rules engine, without pretending to diagnose.
                   </p>
                 </div>
               </div>

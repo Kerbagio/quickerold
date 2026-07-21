@@ -17,6 +17,7 @@ export interface HealthAgentState {
   symptomNarrative: string;
   context: TriageContext;
   pendingQuestion: AgentQuestionKey | null;
+  askedQuestions: AgentQuestionKey[];
   triage: TriageResult | null;
   turnCount: number;
 }
@@ -89,23 +90,55 @@ function inferAnswerFromNaturalLanguage(
   if (direct) return direct;
 
   if (key === "conscious") {
-    if (/\b(unconscious|unresponsive|not responding|cannot wake|can't wake|passed out)\b/i.test(normalized)) return "no";
-    if (/\b(awake|alert|responding|talking|speaking|walking)\b/i.test(normalized)) return "yes";
+    if (
+      /\b(unconscious|unresponsive|not responding|cannot wake|can't wake|passed out)\b/i.test(
+        normalized,
+      )
+    ) {
+      return "no";
+    }
+    if (/\b(awake|alert|responding|talking|speaking|walking)\b/i.test(normalized)) {
+      return "yes";
+    }
   }
 
   if (key === "breathingNormally") {
-    if (/\b(not breathing|gasping|choking|struggling to breathe|can't breathe|cannot breathe)\b/i.test(normalized)) return "no";
-    if (/\b(breathing normally|breathing fine|can breathe|speaking normally|talking normally)\b/i.test(normalized)) return "yes";
+    if (
+      /\b(not breathing|gasping|choking|struggling to breathe|can't breathe|cannot breathe)\b/i.test(
+        normalized,
+      )
+    ) {
+      return "no";
+    }
+    if (
+      /\b(breathing normally|breathing fine|can breathe|speaking normally|talking normally)\b/i.test(
+        normalized,
+      )
+    ) {
+      return "yes";
+    }
   }
 
   if (key === "severeBleeding") {
-    if (/\b(no bleeding|not bleeding|bleeding stopped)\b/i.test(normalized)) return "no";
-    if (/\b(heavy bleeding|severe bleeding|won't stop bleeding|uncontrolled bleeding)\b/i.test(normalized)) return "yes";
+    if (/\b(no bleeding|not bleeding|bleeding stopped)\b/i.test(normalized)) {
+      return "no";
+    }
+    if (
+      /\b(heavy bleeding|severe bleeding|won't stop bleeding|uncontrolled bleeding)\b/i.test(
+        normalized,
+      )
+    ) {
+      return "yes";
+    }
   }
 
   if (key === "worseningRapidly") {
-    if (/\b(getting worse|worsening|rapidly worse|much worse)\b/i.test(normalized)) return "yes";
-    if (/\b(not getting worse|stable|same as before|not worsening)\b/i.test(normalized)) return "no";
+    if (/\b(getting worse|worsening|rapidly worse|much worse)\b/i.test(normalized)) {
+      return "yes";
+    }
+    if (/\b(not getting worse|stable|same as before|not worsening)\b/i.test(normalized)) {
+      return "no";
+    }
   }
 
   return null;
@@ -118,11 +151,19 @@ function appendNarrative(current: string, text: string): string {
   return combined.slice(-5000);
 }
 
+function addAskedQuestion(
+  questions: AgentQuestionKey[],
+  question: AgentQuestionKey,
+): AgentQuestionKey[] {
+  return questions.includes(question) ? questions : [...questions, question];
+}
+
 function getNextQuestion(
   context: TriageContext,
   triage: TriageResult,
   symptomNarrative: string,
   turnCount: number,
+  askedQuestions: AgentQuestionKey[],
 ): AgentQuestionKey | null {
   if (triage.urgency === "emergency") return null;
   if (triage.requiresImmediateAction && triage.urgency !== "needs-more-info") {
@@ -130,15 +171,18 @@ function getNextQuestion(
   }
 
   const missingCritical = structuredQuestionOrder.find(
-    (key) => context[key] === "unknown",
+    (key) => context[key] === "unknown" && !askedQuestions.includes(key),
   );
   if (missingCritical) return missingCritical;
 
   if (triage.urgency === "needs-more-info") {
-    if (symptomNarrative.trim().length < 55 || turnCount <= 4) {
+    if (
+      !askedQuestions.includes("symptomDetails") &&
+      (symptomNarrative.trim().length < 55 || turnCount <= 4)
+    ) {
       return "symptomDetails";
     }
-    return "onset";
+    if (!askedQuestions.includes("onset")) return "onset";
   }
 
   return null;
@@ -152,10 +196,9 @@ function detectedSignalText(triage: TriageResult): string {
 
 function composeReply(
   triage: TriageResult,
-  nextQuestion: AgentQuestionKey | null,
   turnCount: number,
+  acknowledgement?: string,
 ): string {
-  const question = nextQuestion ? questionText[nextQuestion] : "";
   const signalText = detectedSignalText(triage);
 
   if (triage.urgency === "emergency") {
@@ -163,24 +206,25 @@ function composeReply(
   }
 
   if (triage.requiresImmediateAction) {
-    return `I can’t safely treat that message as low risk. If someone is unresponsive, not breathing normally, or in immediate danger, contact local emergency services now.${question ? ` ${question}` : ""}`;
+    return "I can’t safely treat that message as low risk. If someone is unresponsive, not breathing normally, or in immediate danger, contact local emergency services now.";
   }
 
   if (triage.urgency === "urgent") {
-    return `Based on what you’ve told me, prompt in-person assessment is recommended.${signalText} ${triage.nextStep}${question ? ` ${question}` : ""}`;
+    return `Based on what you’ve told me, prompt in-person assessment is recommended.${signalText} ${triage.nextStep}`;
   }
 
   if (triage.urgency === "soon") {
-    return `This does not match one of the app’s immediate emergency rules, but a medical review may still be appropriate.${signalText}${question ? ` ${question}` : ""}`;
+    return `This does not match one of the app’s immediate emergency rules, but a medical review may still be appropriate.${signalText}`;
   }
 
+  if (acknowledgement) return acknowledgement;
+
   const openings = [
-    "I need a little more information before I can judge the urgency safely.",
-    "Thanks — I don’t have enough reliable detail yet to classify this safely.",
-    "I’m not going to guess from an unclear description.",
+    "Thanks. I need a few quick safety details before I can assess the urgency.",
+    "I don’t have enough reliable information yet, so I’ll check the most important safety points first.",
+    "I’m not going to guess from limited information. Let’s go through the key safety checks.",
   ];
-  const opening = openings[turnCount % openings.length];
-  return `${opening}${question ? ` ${question}` : " Please describe the main symptom and when it started."}`;
+  return openings[turnCount % openings.length];
 }
 
 function conversationalPlan(
@@ -191,6 +235,7 @@ function conversationalPlan(
   const nextState: HealthAgentState = {
     ...previousState,
     context: { ...previousState.context },
+    askedQuestions: [...previousState.askedQuestions],
     turnCount: previousState.turnCount + 1,
   };
   const pending = previousState.pendingQuestion;
@@ -230,6 +275,7 @@ export function createHealthAgentState(): HealthAgentState {
     symptomNarrative: "",
     context: { ...DEFAULT_TRIAGE_CONTEXT },
     pendingQuestion: null,
+    askedQuestions: [],
     triage: null,
     turnCount: 0,
   };
@@ -242,13 +288,12 @@ export function planHealthAgentTurn(
   const cleaned = userText.trim().slice(0, 1200);
 
   if (greetingPattern.test(cleaned)) {
-    const followUp = previousState.pendingQuestion
-      ? ` We can continue where we stopped: ${questionText[previousState.pendingQuestion]}`
-      : " Tell me who needs help, the main symptom, and when it started.";
     return conversationalPlan(
       previousState,
       "greeting",
-      `Hi — I’m here to help you work out how urgently care may be needed.${followUp}`,
+      previousState.pendingQuestion
+        ? "Hi — we can continue the assessment whenever you’re ready."
+        : "Hi — I’m here to help you work out how urgently care may be needed. Tell me who needs help, the main symptom, and when it started.",
     );
   }
 
@@ -257,8 +302,8 @@ export function planHealthAgentTurn(
       previousState,
       "thanks",
       previousState.pendingQuestion
-        ? `You’re welcome. To continue the assessment: ${questionText[previousState.pendingQuestion]}`
-        : "You’re welcome. Describe any new symptoms whenever you need to start another assessment.",
+        ? "You’re welcome. We can continue whenever you’re ready."
+        : "You’re welcome. Describe any new symptoms whenever you need another assessment.",
     );
   }
 
@@ -272,32 +317,54 @@ export function planHealthAgentTurn(
 
   const nextContext: TriageContext = { ...previousState.context };
   let symptomNarrative = previousState.symptomNarrative;
+  let askedQuestions = [...previousState.askedQuestions];
+  let acknowledgement: string | undefined;
   const toolSteps: AgentToolStep[] = [];
 
-  if (
-    previousState.pendingQuestion &&
-    structuredQuestionOrder.includes(
-      previousState.pendingQuestion as keyof TriageContext,
-    )
-  ) {
-    const contextKey = previousState.pendingQuestion as keyof TriageContext;
-    const answer = inferAnswerFromNaturalLanguage(contextKey, cleaned);
-    if (answer) {
-      nextContext[contextKey] = answer;
-      toolSteps.push({
-        id: `context-${contextKey}`,
-        tool: "triage.update_context",
-        detail: `Recorded ${contextKey} as ${answer}.`,
-        status: "complete",
-      });
+  if (previousState.pendingQuestion) {
+    const pendingQuestion = previousState.pendingQuestion;
+    askedQuestions = addAskedQuestion(askedQuestions, pendingQuestion);
+
+    if (
+      structuredQuestionOrder.includes(
+        pendingQuestion as keyof TriageContext,
+      )
+    ) {
+      const contextKey = pendingQuestion as keyof TriageContext;
+      const answer = inferAnswerFromNaturalLanguage(contextKey, cleaned);
+
+      if (answer) {
+        nextContext[contextKey] = answer;
+        acknowledgement =
+          answer === "unknown"
+            ? "That’s okay — I’ll leave that answer as unknown and move to the next safety check."
+            : "Got it — I’ve recorded that answer.";
+        toolSteps.push({
+          id: `context-${contextKey}`,
+          tool: "triage.update_context",
+          detail: `Recorded ${contextKey} as ${answer}.`,
+          status: "complete",
+        });
+      } else {
+        symptomNarrative = appendNarrative(symptomNarrative, cleaned);
+        acknowledgement =
+          "Thanks — I kept that as extra symptom information and moved to the next safety check.";
+        toolSteps.push({
+          id: `context-${contextKey}`,
+          tool: "triage.update_context",
+          detail:
+            "The reply was not a clear yes/no/not-sure answer, so it was kept as symptom context and the assessment advanced.",
+          status: "warning",
+        });
+      }
     } else {
       symptomNarrative = appendNarrative(symptomNarrative, cleaned);
+      acknowledgement = "Thanks — that adds useful context to the assessment.";
       toolSteps.push({
-        id: `context-${contextKey}`,
+        id: `context-${pendingQuestion}`,
         tool: "triage.update_context",
-        detail:
-          "The reply was not clear enough to answer the current safety check, so it was kept as symptom context.",
-        status: "warning",
+        detail: `Recorded the answer to ${pendingQuestion} as symptom context.`,
+        status: "complete",
       });
     }
   } else {
@@ -327,12 +394,14 @@ export function planHealthAgentTurn(
     triage,
     symptomNarrative,
     turnCount,
+    askedQuestions,
   );
 
   const nextState: HealthAgentState = {
     symptomNarrative,
     context: nextContext,
     pendingQuestion: nextQuestionKey,
+    askedQuestions,
     triage,
     turnCount,
   };
@@ -350,7 +419,7 @@ export function planHealthAgentTurn(
           ),
         }
       : null,
-    reply: composeReply(triage, nextQuestionKey, turnCount),
+    reply: composeReply(triage, turnCount, acknowledgement),
     toolSteps,
     canPrepareHospitalSearch:
       triage.urgency !== "needs-more-info" || triage.requiresImmediateAction,

@@ -1,9 +1,9 @@
 import { useEffect, useRef } from "react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import {
-  translateRuntimeText,
+  translateAppText,
   type RuntimeLanguage,
-} from "@/i18n/runtimeTranslations";
+} from "@/i18n/translateAppText";
 
 const translatedAttributes = ["placeholder", "title", "aria-label", "alt"] as const;
 const skippedTags = new Set(["SCRIPT", "STYLE", "NOSCRIPT", "CODE", "PRE"]);
@@ -18,8 +18,8 @@ function canTranslate(source: string): boolean {
   const normalized = source.trim();
   if (!normalized) return false;
   return (
-    translateRuntimeText(normalized, "ar") !== normalized ||
-    translateRuntimeText(normalized, "fr") !== normalized
+    translateAppText(normalized, "ar") !== normalized ||
+    translateAppText(normalized, "fr") !== normalized
   );
 }
 
@@ -55,14 +55,14 @@ const RuntimeTranslator = () => {
         source = normalized;
         textSources.current.set(node, source);
       } else {
-        const expected = translateRuntimeText(source, activeLanguage);
+        const expected = translateAppText(source, activeLanguage);
         if (normalized !== expected && canTranslate(normalized)) {
           source = normalized;
           textSources.current.set(node, source);
         }
       }
 
-      const translated = translateRuntimeText(source, activeLanguage);
+      const translated = translateAppText(source, activeLanguage);
       const nextValue = preserveOuterWhitespace(current, translated);
       if (nextValue !== current) node.nodeValue = nextValue;
     };
@@ -86,14 +86,14 @@ const RuntimeTranslator = () => {
           source = current.trim();
           sources?.set(attribute, source);
         } else {
-          const expected = translateRuntimeText(source, activeLanguage);
+          const expected = translateAppText(source, activeLanguage);
           if (current.trim() !== expected && canTranslate(current)) {
             source = current.trim();
             sources?.set(attribute, source);
           }
         }
 
-        const translated = translateRuntimeText(source, activeLanguage);
+        const translated = translateAppText(source, activeLanguage);
         if (translated !== current) element.setAttribute(attribute, translated);
       });
     };

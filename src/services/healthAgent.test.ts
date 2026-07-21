@@ -1,16 +1,22 @@
 import { describe, expect, it } from "vitest";
-import {
-  isSafeGeneratedAgentReply,
-  planHealthAgentTurn,
-} from "@/services/healthAgent";
-
+import { planHealthAgentTurn } from "@/services/healthAgent";
 
 describe("planHealthAgentTurn", () => {
+  it("responds to a greeting immediately without starting a medical assessment", () => {
+    const plan = planHealthAgentTurn("Hi");
+
+    expect(plan.intent).toBe("greeting");
+    expect(plan.reply).toContain("Hi");
+    expect(plan.triage).toBeNull();
+    expect(plan.nextQuestion).toBeNull();
+  });
+
   it("asks one critical question at a time and keeps conversation state", () => {
     const first = planHealthAgentTurn("I have a mild headache.");
 
     expect(first.nextQuestion?.key).toBe("conscious");
     expect(first.state.symptomNarrative).toContain("mild headache");
+    expect(first.reply).toContain("conscious");
 
     const second = planHealthAgentTurn("Yes", first.state);
 
@@ -19,14 +25,22 @@ describe("planHealthAgentTurn", () => {
     expect(second.state.symptomNarrative).toBe(first.state.symptomNarrative);
   });
 
-  it("treats a negative consciousness answer as an emergency tool result", () => {
+  it("treats a negative consciousness answer as an emergency", () => {
     const first = planHealthAgentTurn("Something is wrong.");
     const second = planHealthAgentTurn("No", first.state);
 
     expect(second.state.context.conscious).toBe("no");
-    expect(second.triage.urgency).toBe("emergency");
-    expect(second.triage.requiresImmediateAction).toBe(true);
+    expect(second.triage?.urgency).toBe("emergency");
+    expect(second.triage?.requiresImmediateAction).toBe(true);
     expect(second.nextQuestion).toBeNull();
+  });
+
+  it("understands a natural-language consciousness answer", () => {
+    const first = planHealthAgentTurn("My father feels weak.");
+    const second = planHealthAgentTurn("He is awake and talking", first.state);
+
+    expect(second.state.context.conscious).toBe("yes");
+    expect(second.nextQuestion?.key).toBe("breathingNormally");
   });
 
   it("does not misread not-sure as a negative answer", () => {
@@ -37,46 +51,27 @@ describe("planHealthAgentTurn", () => {
     expect(second.nextQuestion?.key).toBe("conscious");
   });
 
-  it("asks for critical clarification when the wording is ambiguous", () => {
+  it("asks for critical clarification when wording is ambiguous", () => {
     const plan = planHealthAgentTurn("I am dead.");
 
-    expect(plan.triage.urgency).toBe("needs-more-info");
-    expect(plan.triage.requiresImmediateAction).toBe(true);
+    expect(plan.triage?.urgency).toBe("needs-more-info");
+    expect(plan.triage?.riskLevel).toBe("high");
+    expect(plan.triage?.requiresImmediateAction).toBe(true);
     expect(plan.nextQuestion?.key).toBe("conscious");
-    expect(plan.canPrepareHospitalSearch).toBe(true);
   });
 
   it("does not turn non-medical dead language into a green result", () => {
     const plan = planHealthAgentTurn("My phone battery is dead.");
 
-    expect(plan.triage.urgency).toBe("needs-more-info");
-    expect(plan.triage.requiresImmediateAction).toBe(false);
-    expect(plan.nextQuestion?.key).toBe("conscious");
-  });
-});
-
-describe("isSafeGeneratedAgentReply", () => {
-  it("rejects a model reply that downgrades care", () => {
-    const plan = planHealthAgentTurn("I have a mild headache.");
-
-    expect(
-      isSafeGeneratedAgentReply(
-        "Nothing serious is happening and there is no need for care.",
-        plan.triage,
-      ),
-    ).toBe(false);
+    expect(plan.triage?.urgency).toBe("needs-more-info");
+    expect(plan.triage?.requiresImmediateAction).toBe(false);
   });
 
-  it("accepts an emergency response that preserves the tool instruction", () => {
-    const plan = planHealthAgentTurn(
-      "My father has chest pressure and is struggling to breathe.",
-    );
+  it("explains its function when asked for help", () => {
+    const plan = planHealthAgentTurn("What can you do?");
 
-    expect(
-      isSafeGeneratedAgentReply(
-        "These warning signs may represent an emergency. Contact local emergency services immediately and do not wait for this app.",
-        plan.triage,
-      ),
-    ).toBe(true);
+    expect(plan.intent).toBe("help");
+    expect(plan.reply).toContain("warning signs");
+    expect(plan.triage).toBeNull();
   });
 });

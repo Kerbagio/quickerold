@@ -8,6 +8,41 @@ import {
 const translatedAttributes = ["placeholder", "title", "aria-label", "alt"] as const;
 const skippedTags = new Set(["SCRIPT", "STYLE", "NOSCRIPT", "CODE", "PRE"]);
 
+const localizedMetadata: Record<
+  RuntimeLanguage,
+  {
+    title: string;
+    description: string;
+    socialTitle: string;
+    socialDescription: string;
+  }
+> = {
+  en: {
+    title: "QuickER - Get to the right hospital, faster",
+    description:
+      "Compare nearby hospitals by suitable emergency care and fastest available road ETA, with every source clearly labelled.",
+    socialTitle: "QuickER - Get to the right hospital, faster",
+    socialDescription:
+      "Compare nearby hospitals by suitability and fastest available road ETA.",
+  },
+  ar: {
+    title: "QuickER - الوصول إلى المستشفى المناسب بشكل أسرع",
+    description:
+      "قارن المستشفيات القريبة بحسب الرعاية الطارئة المناسبة وأسرع وقت وصول متاح عبر الطرق، مع توضيح مصدر كل نتيجة.",
+    socialTitle: "QuickER - الوصول إلى المستشفى المناسب بشكل أسرع",
+    socialDescription:
+      "قارن المستشفيات القريبة بحسب الملاءمة وأسرع وقت وصول متاح عبر الطرق.",
+  },
+  fr: {
+    title: "QuickER - Rejoignez plus vite l’hôpital adapté",
+    description:
+      "Comparez les hôpitaux proches selon les soins d’urgence adaptés et le temps de trajet routier disponible le plus rapide, avec chaque source clairement indiquée.",
+    socialTitle: "QuickER - Rejoignez plus vite l’hôpital adapté",
+    socialDescription:
+      "Comparez les hôpitaux proches selon leur adéquation et le temps de trajet routier disponible le plus rapide.",
+  },
+};
+
 function preserveOuterWhitespace(current: string, translated: string): string {
   const start = current.match(/^\s*/)?.[0] ?? "";
   const end = current.match(/\s*$/)?.[0] ?? "";
@@ -31,6 +66,26 @@ function shouldSkipElement(element: Element | null): boolean {
   return false;
 }
 
+function updateMetadata(language: RuntimeLanguage): void {
+  const metadata = localizedMetadata[language];
+  document.documentElement.lang = language;
+  document.title = metadata.title;
+
+  const description = document.querySelector<HTMLMetaElement>(
+    'meta[name="description"]',
+  );
+  const ogTitle = document.querySelector<HTMLMetaElement>(
+    'meta[property="og:title"]',
+  );
+  const ogDescription = document.querySelector<HTMLMetaElement>(
+    'meta[property="og:description"]',
+  );
+
+  description?.setAttribute("content", metadata.description);
+  ogTitle?.setAttribute("content", metadata.socialTitle);
+  ogDescription?.setAttribute("content", metadata.socialDescription);
+}
+
 const RuntimeTranslator = () => {
   const { language } = useLanguage();
   const textSources = useRef(new WeakMap<Text, string>());
@@ -40,6 +95,7 @@ const RuntimeTranslator = () => {
 
   useEffect(() => {
     const activeLanguage = language as RuntimeLanguage;
+    updateMetadata(activeLanguage);
 
     const translateTextNode = (node: Text) => {
       const parent = node.parentElement;
